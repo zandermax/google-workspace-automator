@@ -1,4 +1,4 @@
-/* eslint-disable func-style */
+ 
 
 /**
  * Helper method to allow parameters to be either an array or single element. This will return an

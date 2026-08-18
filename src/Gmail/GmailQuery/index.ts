@@ -15,7 +15,7 @@ import { type TimePeriod } from '@/types/Gmail/dateAndTime';
 
 export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	public constructor(startQuery?: string) {
-		// eslint-disable-next-line @typescript-eslint/unbound-method
+		 
 		super(GmailApp.search, startQuery);
 	}
 
@@ -336,14 +336,18 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	// ************************************************************************** //
 
 	public *[Symbol.iterator]() {
-		let location = 0;
+		let start = 0;
 		const maxResults = 100;
-		for (const threads of super[Symbol.iterator](
-			this.query,
-			(location += maxResults),
-			maxResults
-		)) {
-			yield threads;
+		let results = this.search(this.query, start, maxResults) as ReturnType<
+			typeof GmailApp.search
+		>;
+
+		while (results.length) {
+			yield results;
+			start += maxResults;
+			results = this.search(this.query, start, maxResults) as ReturnType<
+				typeof GmailApp.search
+			>;
 		}
 	}
 }

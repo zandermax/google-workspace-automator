@@ -7,6 +7,14 @@
 - The system is a good base for a new daily inbox-sorting workflow.
 - The repo needs a tooling refresh before we build out the more advanced categorization flow.
 
+## Phase 1 tracker
+
+- Step 1: complete — created repo plan and review checkpoints
+- Step 2: complete — baseline health audit finished and concrete compile issues captured
+- Step 3: in progress — toolchain modernization is underway, but the repo is still failing compile checks and needs a compatibility fix
+- Step 4: pending — audit Gmail query execution safety
+- Step 5: pending — define the safe sorter architecture
+
 ## Current understanding
 
 This project currently:
