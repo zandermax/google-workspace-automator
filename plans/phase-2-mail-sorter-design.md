@@ -56,26 +56,42 @@ Output: approved category map with label names and one-sentence rule definitions
 
 ## Step 2: define the action model
 
-Status: pending
+Status: complete
 
 Goal: decide exactly what happens to each category.
 
-Possible actions:
+Approved action model:
 
-- apply a label only
-- apply a label and archive
-- star or snooze for follow-up
-- leave in inbox for human review
-- move to trash only for known junk patterns
+- This version is intentionally conservative and label-first.
+- No category auto-archives or auto-deletes in the first pass.
+- The system should reduce inbox noise without risking important or time-sensitive mail.
 
-Rules to define:
+Decision matrix:
 
-- rule priority order
-- when multiple rules match
-- how to handle unknown mail
-- whether uncertain mail should be quarantined
+| Category                | Default action                                   | Secondary action                                               | Safety rule                                                |
+| ----------------------- | ------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------- |
+| Personal                | Apply `Inbox / Personal` label and leave visible | Star only if the sender is time-sensitive or actionable        | Never auto-archive or auto-delete                          |
+| Finance                 | Apply `Inbox / Finance` label                    | Keep in inbox and flag for manual review                       | Never auto-archive or auto-delete                          |
+| Newsletters             | Apply `Inbox / Newsletters` label                | Leave in inbox until the user reviews or a later rule is added | No destructive action in v1                                |
+| Alerts                  | Apply `Inbox / Alerts` label                     | Leave visible in inbox                                         | No destructive action in v1                                |
+| Follow-up               | Apply `Inbox / Follow-up` label                  | Star for attention or keep visible                             | Never auto-archive or auto-delete                          |
+| Unknown / manual review | Apply `Inbox / Review` label                     | Leave in inbox for human judgment                              | Unknown mail should never be auto-processed without review |
 
-Output: a decision matrix for category -> action -> safety rule.
+Rule priority:
+
+1. If the sender or subject clearly matches a known rule, apply that category.
+2. If multiple rules match, pick the most specific and highest-priority match.
+3. If the category is uncertain, fall back to `Inbox / Review`.
+4. Never apply a destructive action in the first version.
+
+Concrete behavior:
+
+- Label-only actions are the default.
+- Star or keep visible on follow-up and finance messages when the user may need to inspect them.
+- Unknown or ambiguous mail goes to `Inbox / Review` rather than being auto-classified.
+- Jukebox, bulk junk, or archive routing are postponed until the system is validated.
+
+Output: approved action model with a conservative rule hierarchy and a clear review path for uncertain mail.
 
 ## Step 3: cap the daily processing model
 
