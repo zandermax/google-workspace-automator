@@ -6,11 +6,13 @@ Pending — this document defines the architecture for the AI-assisted email sor
 
 ## Goal
 
-Build a daily email triage pipeline that:
+Build a daily email triage pipeline that progressively clears the entire mailbox over time:
 
-- Picks up to 100 unprocessed inbox emails per day.
+- Always processes all new unread inbox emails first (usually just a few per day).
+- Then fills the remaining daily slot (up to 100 total) with a random sample of old unprocessed inbox emails.
+- Once the inbox is fully cleared, switches to randomly sampling unprocessed archived emails.
 - Uses Gemini Flash (via Google AI Studio free tier) to classify and summarize them.
-- Applies Gmail labels and archives threads according to classification.
+- Applies Gmail labels and queues appropriate emails for auto-deletion via the existing recycle system.
 - Emails a human-readable daily digest back to the account owner.
 - Runs entirely on free Google cloud infrastructure — no local process, no paid service.
 
@@ -30,10 +32,31 @@ No external servers, cron jobs, or paid APIs required.
 
 ### 1. Fetch layer
 
-- Query: `in:inbox -label:🪄✨ Magic ✨🪄` (unprocessed inbox threads only)
-- Cap: 100 threads per run, ordered by most recent first
-- Skip threads already carrying a `Magic` label (processed marker from existing system)
-- Use the existing `GmailQuery` builder from `src/Gmail/GmailQuery/index.ts`
+The fetch strategy fills a fixed daily slot using a stateless priority cascade. No mode tracking needed — the queries naturally fall through in order.
+
+**Daily slot:** `DAILY_LIMIT = 50` (top-level constant, easy to change)
+
+**Selection cascade (stateless, runs each time, fills slots greedily):**
+
+1. **New unread inbox** — `in:inbox is:unread -label:"🪄✨ Magic ✨🪄"` — take all unread, up to `DAILY_LIMIT`. If unread count equals or exceeds `DAILY_LIMIT`, stop here and include an overflow warning in the digest. Do not run steps 2 or 3.
+2. **Old inbox (random)** — only if slots remain after step 1. `in:inbox -label:"🪄✨ Magic ✨🪄"` — fetch a pool of `remaining * 5`, shuffle, take `remaining`.
+3. **Archived (random)** — only if slots remain after step 2. `in:anywhere -in:inbox -in:trash -in:spam -label:"🪄✨ Magic ✨🪄"` — same shuffle-and-fill.
+
+**Overflow warning:** if new unread count ≥ `DAILY_LIMIT`, the digest opens with:
+```
+⚠️ High inbox volume: N new unread emails today (limit: 50).
+   Only the first 50 were processed. Consider raising DAILY_LIMIT.
+   Unprocessed new emails: [link to inbox]
+```
+
+**Random sampling:** Apps Script has no native random-order query. Fetch `DAILY_LIMIT * 5` threads per pool query (or fewer if not available), apply Fisher-Yates shuffle in memory, slice to the needed count.
+
+**Configuration constant (top of `aiSorter.ts`):**
+```ts
+const DAILY_LIMIT = 50;
+```
+
+Use the existing `GmailQuery` builder from `src/Gmail/GmailQuery/index.ts`.
 
 ### 2. Extraction layer
 
@@ -106,8 +129,8 @@ After receiving the classification response:
 
 **Action limits:**
 
-- Maximum 100 label operations per run.
-- If the limit would be exceeded, process the first 100 and stop — log a warning.
+- Maximum `DAILY_LIMIT` label operations per run (matches the fetch cap).
+- If the limit would be exceeded, process the first N and stop — log a warning.
 
 ### 5. Digest layer
 
@@ -119,12 +142,11 @@ After the run, send one summary email to the account owner.
 
 ```
 📬 Daily Email Digest — [date]
-Processed: N | Action needed: N | Auto-recycling: N | Space freed: X MB
+Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 
 🗄️ Storage
-- Gmail used: X GB / 15 GB
+- Gmail used: X GB / 15 GB  (▼ freed X MB today)
 - Drive free: X GB
-- Freed this run: X MB (N emails queued for recycle)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚡ ACTION REQUIRED
