@@ -158,11 +158,12 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 
 [sender] · [relative age] · [sizeKb]
 [subject]
+[attachment icons]  ← one or more of: 📷 (photo), 📄 (doc), 📅 (calendar event), 🎵 (audio), 🎬 (video), 📎 (generic attachment); each clickable to open
 → [summary]
    • [highlight 1]
    • [highlight 2]
    ⏰ [keyDetail if present]
-   ⛓️‍💥 Unsubscribe  ← only shown when an unsubscribe mechanism was found
+   ⛓️‍💥 Unsubscribe  ← direct URL; use `⛓️‍💥 Unsubscribe ✉️` for `mailto:` links
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 PERSONAL  (N)  → [label URL]
@@ -170,10 +171,11 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 
 [sender] · [age] · [sizeKb]
 [subject]
+[attachment icons]  ← if present
 → [summary]
    • [highlight 1]
    • [highlight 2]
-   ⛓️‍💥 Unsubscribe  ← only shown when actionable
+   ⛓️‍💥 Unsubscribe ✉️  ← `mailto:` variant; direct URL uses just `⛓️‍💥 Unsubscribe`
 
 [one section per non-empty category, in priority order:
  personal → finance → govt → receipts → newsletters → alerts → junk]
@@ -184,14 +186,41 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 
 [sender] · [age] · [category] · [sizeKb]
 [subject]
+[attachment icons]  ← if present
 → [summary]
    • [highlight 1]  ← still shown even if stale — content may still be interesting
-   ⛓️‍💥 Unsubscribe  ← only shown when actionable
+   ⛓️‍💥 Unsubscribe ✉️  ← `mailto:` variant; direct URL uses just `⛓️‍💥 Unsubscribe`
 
 [shown last; rescue any thread by removing the Auto-Recycle/7d label]
 ```
 
 Plain text with UTF-8 separators. Gmail renders this cleanly on mobile and desktop.
+
+**Attachment icon examples:**
+```
+[sender] · [1 hour ago] · [2.4 MB]
+React Newsletter Issue #42
+📷 📄
+→ React Server Components and concurrent rendering walkthrough
+   • React Server Components intro
+   • concurrent features overview
+
+[sender] · [3 days ago] · [0.8 MB]
+Amazon Order Confirmation
+📄
+→ Purchase confirmation of a troll doll from eBay
+   • Order #123456789
+   • Ships within 2 business days
+
+[sender] · [2 weeks ago] · [5.1 MB]
+Team Meeting Notes
+📅 📎
+→ Recording and transcript from last week's planning session
+   • Action items assigned
+   • Budget discussion included
+```
+
+Each attachment icon line is placed before the summary arrow (→) and each icon is clickable to open that attachment.
 
 The goal: read top-to-bottom and decide per email whether it's worth opening, without leaving the digest. Highlights give you content signal even for old emails — e.g. an old newsletter might have a still-relevant article worth saving.
 
@@ -208,9 +237,11 @@ The goal: read top-to-bottom and decide per email whether it's worth opening, wi
 
 #### Rendering rules
 
-- If an unsubscribe mechanism is found, always show exactly: `⛓️‍💥 Unsubscribe`
+- If an unsubscribe mechanism is found:
+  - direct URL: `⛓️‍💥 Unsubscribe`
+  - `mailto:` fallback: `⛓️‍💥 Unsubscribe ✉️`
 - If no mechanism exists, show nothing.
-- For both URL and `mailto:` variants, the visible link text is always `Unsubscribe`.
+- For both URL and `mailto:` variants, the visible link text remains `Unsubscribe`; `mailto:` adds a trailing mail icon after the label.
 
 #### Header parsing
 
