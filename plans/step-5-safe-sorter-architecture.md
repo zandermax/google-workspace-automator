@@ -38,7 +38,7 @@ The fetch strategy fills a fixed daily slot using a stateless priority cascade. 
 
 **Selection cascade (stateless, runs each time, fills slots greedily):**
 
-1. **New unread inbox** — `in:inbox is:unread -label:"🪄✨ Magic ✨🪄"` — take all unread, up to `DAILY_LIMIT`. If unread count equals or exceeds `DAILY_LIMIT`, stop here and include an overflow warning in the digest. Do not run steps 2 or 3.
+1. **New unread inbox** — `in:inbox is:unread -label:"🪄✨ Magic ✨🪄"` — take all unread, up to `DAILY_LIMIT`. If unread count equals or exceeds `DAILY_LIMIT`, stop here (do not run steps 2 or 3) and include an overflow warning in the digest.
 2. **Old inbox (random)** — only if slots remain after step 1. `in:inbox -label:"🪄✨ Magic ✨🪄"` — fetch a pool of `remaining * 5`, shuffle, take `remaining`.
 3. **Archived (random)** — only if slots remain after step 2. `in:anywhere -in:inbox -in:trash -in:spam -label:"🪄✨ Magic ✨🪄"` — same shuffle-and-fill.
 
@@ -147,6 +147,7 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 🗄️ Storage
 - Gmail used: X GB / 15 GB  (▼ freed X MB today)
 - Drive free: X GB
+- Estimated MB queued for recycle this run: X MB
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚡ ACTION REQUIRED
@@ -158,6 +159,7 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
    • [highlight 1]
    • [highlight 2]
    ⏰ [keyDetail if present]
+   ⛓️‍💥 Unsubscribe  ← only shown when an unsubscribe mechanism was found
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 PERSONAL  (N)  → [label URL]
@@ -168,6 +170,7 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 → [summary]
    • [highlight 1]
    • [highlight 2]
+   ⛓️‍💥 Unsubscribe  ← only shown when actionable
 
 [one section per non-empty category, in priority order:
  personal → finance → govt → receipts → newsletters → alerts → junk]
@@ -180,6 +183,7 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 [subject]
 → [summary]
    • [highlight 1]  ← still shown even if stale — content may still be interesting
+   ⛓️‍💥 Unsubscribe  ← only shown when actionable
 
 [shown last; rescue any thread by removing the Auto-Recycle/7d label]
 ```
@@ -188,7 +192,47 @@ Plain text with UTF-8 separators. Gmail renders this cleanly on mobile and deskt
 
 The goal: read top-to-bottom and decide per email whether it's worth opening, without leaving the digest. Highlights give you content signal even for old emails — e.g. an old newsletter might have a still-relevant article worth saving.
 
-### 6. Logging and error handling
+**Per-entry content:** each entry includes summary, highlights, size, and optionally `⛓️‍💥 Unsubscribe` — only when an actionable unsubscribe mechanism was found.
+
+**Quota and cleanup stats** shown in the header:
+- Gmail used / total quota
+- Drive free space
+- Estimated MB queued for recycle this run
+- `Processed: N / DAILY_LIMIT` where `DAILY_LIMIT = 50`
+
+### 6. Unsubscribe support
+
+#### Rendering rules
+
+- If an unsubscribe mechanism is found, always show exactly: `⛓️‍💥 Unsubscribe`
+- If no mechanism exists, show nothing.
+- For both URL and `mailto:` variants, the visible link text is always `Unsubscribe`.
+
+#### Header parsing
+
+- Parse `List-Unsubscribe` and `List-Unsubscribe-Post` from message headers.
+- Prefer HTTPS URL if present; fallback to `mailto:`.
+
+#### POST-only one-click flow
+
+When `List-Unsubscribe-Post: List-Unsubscribe=One-Click` is present and no directly usable URL link exists:
+
+- Generate a signed one-time link in the digest:
+  - text: `⛓️‍💥 Unsubscribe`
+  - href: Apps Script Web App endpoint with tokenized params
+- Endpoint verifies signature + expiry + message identity.
+- Endpoint performs the required POST to the provider's unsubscribe endpoint.
+- Endpoint returns a simple success/failure page.
+
+#### Security requirements for unsubscribe links
+
+- HMAC-signed tokens (secret stored in Script Properties)
+- Short expiry (e.g. 7 days)
+- Nonce/replay protection (store used token IDs)
+- Only allow known HTTPS unsubscribe domains parsed from the header
+- Log every unsubscribe attempt and result
+
+### 7. Logging and error handling
 
 - Use `Logger.log` for all decisions (available in Apps Script execution logs).
 - On any LLM API error: abort the action phase, log the raw response, send a short error digest instead.
