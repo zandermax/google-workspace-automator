@@ -2,7 +2,7 @@
 
 ## Status
 
-Pending — this document defines the architecture for the AI-assisted email sorter.
+Reference architecture — this document defines the implementation blueprint for the AI-assisted email sorter and should be used to validate the design before coding.
 
 ## Goal
 
@@ -18,13 +18,13 @@ Build a daily email triage pipeline that progressively clears the entire mailbox
 
 ## Runtime
 
-| Component | Technology | Cost |
-|---|---|---|
-| Orchestration | Google Apps Script (time-driven trigger) | Free |
-| Gmail access | GmailApp (native Apps Script) | Free |
-| LLM classification | Gemini Flash via Google AI Studio API | Free (1500 req/day) |
-| Output | GmailApp.sendEmail | Free |
-| State tracking | Gmail labels (existing pattern in this repo) | Free |
+| Component          | Technology                                   | Cost                |
+| ------------------ | -------------------------------------------- | ------------------- |
+| Orchestration      | Google Apps Script (time-driven trigger)     | Free                |
+| Gmail access       | GmailApp (native Apps Script)                | Free                |
+| LLM classification | Gemini Flash via Google AI Studio API        | Free (1500 req/day) |
+| Output             | GmailApp.sendEmail                           | Free                |
+| State tracking     | Gmail labels (existing pattern in this repo) | Free                |
 
 No external servers, cron jobs, or paid APIs required.
 
@@ -43,6 +43,7 @@ The fetch strategy fills a fixed daily slot using a stateless priority cascade. 
 3. **Archived (random)** — only if slots remain after step 2. `in:anywhere -in:inbox -in:trash -in:spam -label:"🪄✨ Magic ✨🪄"` — same shuffle-and-fill.
 
 **Overflow warning:** if new unread count ≥ `DAILY_LIMIT`, the digest opens with:
+
 ```
 ⚠️ High inbox volume: N new unread emails today (limit: 50).
    Only the first 50 were processed. Consider raising DAILY_LIMIT.
@@ -52,6 +53,7 @@ The fetch strategy fills a fixed daily slot using a stateless priority cascade. 
 **Random sampling:** Apps Script has no native random-order query. Fetch `DAILY_LIMIT * 5` threads per pool query (or fewer if not available), apply Fisher-Yates shuffle in memory, slice to the needed count.
 
 **Configuration constant (top of `aiSorter.ts`):**
+
 ```ts
 const DAILY_LIMIT = 50;
 ```
@@ -77,15 +79,15 @@ Batch all extracted snippets into a single prompt per run. One API call per dail
 
 **Categories:**
 
-| Label | Meaning | Action |
-|---|---|---|
-| `triage/personal` | Messages from real people the user knows | Label only — review manually via digest link |
-| `triage/finance` | Invoices, bank statements, payment confirmations | Label only — review manually via digest link |
-| `triage/govt` | Government agencies, official bureaucratic correspondence | Label only — review manually via digest link |
-| `triage/receipts` | Purchase receipts and order confirmations | Label only — review manually via digest link |
-| `triage/newsletters` | Subscriptions, marketing digests, announcements | Label + `Auto-Recycle/7d` — trashed in 7 days if not reviewed |
-| `triage/alerts` | Automated system alerts, notifications, monitoring | Label + `Auto-Recycle/7d` — trashed in 7 days if not reviewed |
-| `triage/junk` | Low-value, confidently disposable | Label + `Auto-Recycle/7d` — trashed in 7 days if not reviewed |
+| Label                | Meaning                                                   | Action                                                        |
+| -------------------- | --------------------------------------------------------- | ------------------------------------------------------------- |
+| `triage/personal`    | Messages from real people the user knows                  | Label only — review manually via digest link                  |
+| `triage/finance`     | Invoices, bank statements, payment confirmations          | Label only — review manually via digest link                  |
+| `triage/govt`        | Government agencies, official bureaucratic correspondence | Label only — review manually via digest link                  |
+| `triage/receipts`    | Purchase receipts and order confirmations                 | Label only — review manually via digest link                  |
+| `triage/newsletters` | Subscriptions, marketing digests, announcements           | Label + `Auto-Recycle/7d` — trashed in 7 days if not reviewed |
+| `triage/alerts`      | Automated system alerts, notifications, monitoring        | Label + `Auto-Recycle/7d` — trashed in 7 days if not reviewed |
+| `triage/junk`        | Low-value, confidently disposable                         | Label + `Auto-Recycle/7d` — trashed in 7 days if not reviewed |
 
 **Review mechanic:**
 
@@ -105,6 +107,7 @@ Expected output: a JSON array of `{ id, category, timeSensitive, actionRequired,
 - `keyDetail`: the single most operationally relevant detail if actionRequired — deadline, amount, event date, etc. Empty string otherwise.
 
 **Examples of good highlight output:**
+
 - React newsletter (old): `["React Server Components intro", "new concurrent features overview", "deprecated lifecycle methods"]`
 - Career advice newsletter: `["advice now mostly superseded by LLMs", "networking tips still relevant"]`
 - Webtoon: `["funny comic strip", "new episode available"]`
@@ -195,6 +198,7 @@ The goal: read top-to-bottom and decide per email whether it's worth opening, wi
 **Per-entry content:** each entry includes summary, highlights, size, and optionally `⛓️‍💥 Unsubscribe` — only when an actionable unsubscribe mechanism was found.
 
 **Quota and cleanup stats** shown in the header:
+
 - Gmail used / total quota
 - Drive free space
 - Estimated MB queued for recycle this run
@@ -261,14 +265,14 @@ Before going live, the system should support a `DRY_RUN = true` constant:
 
 ## New files to create
 
-| File | Purpose |
-|---|---|
-| `src/_s/Gmail/aiSorter.ts` | Top-level entrypoint for the daily sort run |
-| `src/Gmail/GeminiClient.ts` | Thin wrapper for calling the Gemini Flash API via `UrlFetchApp` |
-| `src/Gmail/actions/applyTriageLabel.ts` | Apply a triage label to a thread |
-| `src/Gmail/StorageStats.ts` | Fetch Gmail quota usage and Drive free space via Apps Script APIs |
-| `src/Gmail/actions/sendDigest.ts` | Compose and send the daily digest email |
-| `src/types/Gmail/triage.ts` | TypeScript types for categories, classification result, digest |
+| File                                    | Purpose                                                           |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| `src/_s/Gmail/aiSorter.ts`              | Top-level entrypoint for the daily sort run                       |
+| `src/Gmail/GeminiClient.ts`             | Thin wrapper for calling the Gemini Flash API via `UrlFetchApp`   |
+| `src/Gmail/actions/applyTriageLabel.ts` | Apply a triage label to a thread                                  |
+| `src/Gmail/StorageStats.ts`             | Fetch Gmail quota usage and Drive free space via Apps Script APIs |
+| `src/Gmail/actions/sendDigest.ts`       | Compose and send the daily digest email                           |
+| `src/types/Gmail/triage.ts`             | TypeScript types for categories, classification result, digest    |
 
 ## Open questions (resolved)
 
