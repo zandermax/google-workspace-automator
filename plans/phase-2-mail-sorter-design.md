@@ -95,19 +95,28 @@ Output: approved action model with a conservative rule hierarchy and a clear rev
 
 ## Step 3: cap the daily processing model
 
-Status: pending
+Status: complete
 
 Goal: keep the automation safe and bounded.
 
-Constraints to define:
+Approved processing model:
 
-- daily target: 100 emails/day
-- max threads per run
-- how to choose newest vs oldest unread mail
-- whether to process only unread mail or both read/unread
-- what to do when a run is interrupted or partially processed
+- This system follows the precedence established in [step-5-safe-sorter-architecture.md](./step-5-safe-sorter-architecture.md):
+  1. process new unread inbox mail first
+  2. then old inbox mail
+  3. then archived mail only if room remains
+- Initial daily throughput will be intentionally small and will scale up gradually.
+- Intended first phase: 10–20 emails/day, then grow toward 50/day, then eventually toward the full target once the rules are validated.
+- The long-term target remains 50/day, with the exact cap adjusted based on comfort and accuracy.
 
-Output: the daily run policy and hard limits.
+Rules:
+
+- only process the inbox subset first; archive and broad old-mail processing stay out of the first rollout
+- a run should have a strict max batch so it cannot overrun the schedule
+- if a run is interrupted, it should resume from the next unprocessed items instead of reusing stale state
+- the initial safe scope is narrower than the final design, but the precedence order stays the same
+
+Output: approved daily run policy with a staged cap that starts small and expands over time.
 
 ## Step 4: define the review and logging model
 
