@@ -105,7 +105,7 @@ export const seedSorterTestEmails = () => {
 
     for (const [index, seedCase] of seedCases.entries()) {
         const subject = `Sorter test ${seedCase.slug} ${runToken}-${index + 1}`;
-        const options: GoogleAppsScript.Gmail.MailAdvancedParameters = {};
+        const options: Parameters<typeof GmailApp.sendEmail>[3] = {};
 
         if (seedCase.withAttachment) {
             options.attachments = [
