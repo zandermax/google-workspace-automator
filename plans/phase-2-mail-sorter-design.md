@@ -120,26 +120,42 @@ Output: approved daily run policy with a staged cap that starts small and expand
 
 ## Step 4: define the review and logging model
 
-Status: pending
+Status: complete
 
 Goal: keep the system auditable and debug-friendly.
 
-Minimum logging:
+Approved review model:
+
+- The system should produce a short daily digest email for the user as the primary review surface.
+- Every run should log the processed count, category counts, action counts, and unknown items.
+- The digest should include a clear summary of what the sorter did and which threads are still waiting for human review.
+- Any dry-run execution should be clearly labeled as such and should not mutate the inbox.
+
+Minimum logging fields:
 
 - processed count
 - category counts
 - action counts
 - unknown / skipped mail count
-- any dry-run results
+- dry-run flag
+- rule match summary
+- timestamp of the run
 
-Review model:
+Daily digest requirements:
 
-- daily summary report
-- per-category counts
-- list of rules that matched
-- a flag for manual review candidates
+- one concise summary email per run
+- include total processed, total categorized, and total review-needed items
+- show each category bucket with a count
+- keep the message readable and plain-text friendly
+- surface `Inbox / Review` items first for quick human triage
 
-Output: a logging approach and summary report format.
+Review path:
+
+- low-confidence or ambiguous matches go to `Inbox / Review`
+- every category section should make it obvious which items need attention
+- the digest should be enough for a human to correct or rescue decisions without opening the inbox first
+
+Output: approved logging and review format for the initial safe rollout.
 
 ## Step 5: validate the safe sorter architecture
 
