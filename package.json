@@ -1,7 +1,7 @@
 {
 	"author": "Zander Maxwell",
 	"bugs": {
-		"url": "https://github.com/axlemax/google-workspace-automator/issues"
+		"url": "https://github.com/zandermax/google-workspace-automator/issues"
 	},
 	"description": "",
 	"devDependencies": {
@@ -22,14 +22,14 @@
 		"prettier": "^3.4.2",
 		"typescript": "^5.9.2"
 	},
-	"homepage": "https://github.com/axlemax/google-workspace-automator#readme",
+	"homepage": "https://github.com/zandermax/google-workspace-automator#readme",
 	"license": "MIT",
 	"main": "index.ts",
 	"name": "google-workspace-automator",
 	"private": true,
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/axlemax/google-workspace-automator.git"
+		"url": "git+https://github.com/zandermax/google-workspace-automator.git"
 	},
 	"scripts": {
 		"build": "tsc && babel src --out-dir dist --extensions '.ts' --keep-file-extension",

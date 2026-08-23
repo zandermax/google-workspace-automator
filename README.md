@@ -1,6 +1,6 @@
 # Google Workspace Automator
 
-![Deploy Apps Script](https://github.com/axlemax/google-workspace-automator/actions/workflows/deploy-apps-script.yml/badge.svg)
+![Deploy Apps Script](https://github.com/zandermax/google-workspace-automator/actions/workflows/deploy-apps-script.yml/badge.svg)
 
 A small TypeScript project that automates routine Google Workspace cleanup and triage tasks with Google Apps Script. The code is designed to run inside Apps Script, then be built and pushed to a connected Google Script project via `clasp`.
 
