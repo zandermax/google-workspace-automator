@@ -182,18 +182,57 @@ Output: a confirmed architecture pass that is approved for coding.
 
 ## Step 6: define the first safe production rollout
 
-Status: pending
+Status: complete
 
-Goal: prepare a conservative first deployment.
+Goal: prepare a conservative first deployment that proves the sorter works without risking important mail.
 
-Recommended rollout:
+Approved rollout plan:
 
-1. dry-run mode for a few days
-2. low-risk categories only
-3. label-only actions before archive actions
-4. gradually enable more aggressive routing
+1. Phase A — dry run only
+   - Run with `dryRun = true` for 3–5 days.
+   - Only inspect mail and compute category assignments.
+   - Send the digest summary without applying labels or mutating the inbox.
+   - Review the counts, rule precision, and ambiguous threads.
 
-Output: a staged rollout checklist.
+2. Phase B — label-only pilot
+   - Enable live processing for a small, low-risk subset only.
+   - Start with `Personal`, `Finance`, `Follow-up`, and `Review` only.
+   - Treat `Newsletters`, `Alerts`, and other lower-confidence buckets as review-only until accuracy is proven.
+   - Keep the cap at 10–20 threads/day in the first week.
+
+3. Phase C — low-volume live routing
+   - Increase to 20–30 processed threads/day.
+   - Add `Newsletters` and `Alerts` labels only after the dry run shows stable, conservative classification.
+   - Keep label-only actions as the default; no archive or delete behavior yet.
+
+4. Phase D — confidence-based expansion
+   - Expand to 30–50 threads/day if the digest and human review are consistently clean.
+   - Add more aggressive routing only for categories with a strong historical match rate.
+   - Continue to route ambiguous mail to `Inbox / Review` instead of auto-processing it.
+
+5. Phase E — larger operational rollout
+   - Broaden daily throughput once the system has been validated for 2–4 weeks.
+   - Only then consider archive or recycle-based rules for low-risk categories.
+   - Keep a hard built-in cap and a review digest as the safety net.
+
+Safety guardrails:
+
+- no destructive actions in the first rollout
+- no archive/delete automation until the label-first flow has proven stable
+- all unknowns route to `Inbox / Review`
+- every run must send a digest with counts and category totals
+- low-confidence or ambiguous matches never auto-classify without review
+
+Operational checklist:
+
+- confirm all required Gmail labels exist
+- enable dry-run mode for the first few days
+- review digest output for false positives and missed personal mail
+- verify the category list and counts are stable
+- increase volume only after a clean run pattern
+- keep the cap modest until user comfort and accuracy improve
+
+Output: a staged rollout checklist that starts in dry-run safety mode and expands only after validation.
 
 ## Deliverable before implementation
 
@@ -206,4 +245,4 @@ Before implementation, we need:
 - safe architecture approval
 - rollout plan
 
-Once the architecture reference and the design steps are approved, we move into implementation with a small, reviewable first patch.
+The design gate is complete. The repo is ready for a small, reviewable first implementation patch once the rollout plan is accepted.
