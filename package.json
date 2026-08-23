@@ -34,7 +34,7 @@
 	"scripts": {
 		"build": "tsc && babel src --out-dir dist --extensions '.ts' --keep-file-extension",
 		"clean": "rm -rf ./{node_modules}",
-		"clean-build": "cd ./dist && ls | grep -v '.json' | xargs rm -rf",
+		"clean-build": "if [ -d ./dist ]; then find ./dist -mindepth 1 ! -name '*.json' -exec rm -rf {} +; fi",
 		"format": "prettier --cache --write .",
 		"lint": "eslint --fix --cache .",
 		"lint-staged": "lint-staged",
