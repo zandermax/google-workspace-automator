@@ -51,3 +51,21 @@ jobs:
 
       - name: Build and deploy to Apps Script
         run: npm run push
+
+      - name: Verify deployment is synced
+        shell: bash
+        run: |
+          clasp status > /tmp/clasp-status.txt 2>&1 || {
+            cat /tmp/clasp-status.txt
+            echo "Deployment verification failed: clasp status could not complete."
+            exit 1
+          }
+
+          cat /tmp/clasp-status.txt
+
+          if grep -Ei "changes detected|not synced|not pushed|not uploaded|modified|pending" /tmp/clasp-status.txt >/dev/null; then
+            echo "Deployment verification failed: the Apps Script project still reports pending changes."
+            exit 1
+          fi
+
+          echo "Deployment verification passed: Apps Script is in sync with the pushed code."
