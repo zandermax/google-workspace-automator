@@ -19,6 +19,9 @@ export const twiceDailyTrigger = (triggerFunction: TriggerFunction) =>
 export const dailyTrigger = (triggerFunction: TriggerFunction) =>
 	createTimeBasedTrigger(triggerFunction, { days: 1 });
 
+export const dryRunDailyTrigger = (triggerFunction: TriggerFunction) =>
+	createTimeBasedTrigger(triggerFunction, { days: 1 });
+
 export const weeklyTrigger = (triggerFunction: TriggerFunction) => {
 	createTimeBasedTrigger(triggerFunction, { weeks: 1 });
 };

@@ -6,9 +6,10 @@ const gmailTriggerFunctions = [
 	'deleteOldPromos',
 	'deleteOldUnread',
 	'deleteOldUpdates',
+	'dryRunSortInbox',
 	'recycle',
 ] as const;
 
-export type TriggerFunction =
-	| typeof driveTriggerFunctions[number]
-	| typeof gmailTriggerFunctions[number];
+export type TriggerFunction = (
+	typeof driveTriggerFunctions | typeof gmailTriggerFunctions
+)[number];
