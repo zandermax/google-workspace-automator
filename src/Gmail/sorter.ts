@@ -196,7 +196,7 @@ export const summarizeInboxSortDryRun = (
 	};
 };
 
-export const dryRunSortInbox = (
+export const runInboxSortDryRun = (
 	options: {
 		maxThreads?: number;
 		includeRead?: boolean;
@@ -252,7 +252,7 @@ export const sendDryRunInboxSortDigest = (
 		recipient?: string;
 	} = {}
 ): InboxSortDryRunSummary => {
-	const result = dryRunSortInbox(options);
+	const result = runInboxSortDryRun(options);
 	const summary = summarizeInboxSortDryRun(result.results);
 	const recipient = options.recipient ?? Session.getActiveUser().getEmail();
 	const lines = [

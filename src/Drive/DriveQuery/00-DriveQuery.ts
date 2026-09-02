@@ -1,5 +1,5 @@
 // Format according to Google's guidance:
-// "Escape single quotes in queries with \', such as 'Valentine\'s Day'."
+// "Escape single quotes in queries with \\, such as 'Valentine\'s Day'."
 const formatQuery = (query: string) =>
 	query.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
 
@@ -87,6 +87,5 @@ export default abstract class DriveQuery {
 	/**
 	 * "Return items that match either query."
 	 */
-	public readonly or = (condition: string) =>
-		this._addOperator('or', condition);
+	public readonly or = (condition: string) => this._addOperator('or', condition);
 }

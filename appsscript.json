@@ -1,0 +1,39 @@
+{
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "serviceId": "gmail",
+        "userSymbol": "Gmail",
+        "version": "v1"
+      },
+      {
+        "serviceId": "drive",
+        "userSymbol": "Drive",
+        "version": "v2"
+      },
+      {
+        "serviceId": "docs",
+        "userSymbol": "Docs",
+        "version": "v1"
+      },
+      {
+        "serviceId": "sheets",
+        "userSymbol": "Sheets",
+        "version": "v4"
+      },
+      {
+        "serviceId": "driveactivity",
+        "userSymbol": "DriveActivity",
+        "version": "v2"
+      },
+      {
+        "serviceId": "drivelabels",
+        "userSymbol": "DriveLabels",
+        "version": "v2"
+      }
+    ]
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "timeZone": "America/New_York"
+}

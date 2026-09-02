@@ -1,4 +1,4 @@
-import DriveQuery from './DriveQuery';
+import DriveQuery from './00-DriveQuery';
 
 export default class DriveFolderQuery extends DriveQuery {
 	public [Symbol.iterator]() {

@@ -1,1 +1,13 @@
+#!/bin/sh
+
+forbidden_files=$(git diff --cached --name-only --diff-filter=ACMR -- \
+	'*.js' '*.jsx' '*.mjs' '*.cjs' \
+	':(exclude)eslint.config.mjs')
+
+if [ -n "$forbidden_files" ]; then
+	printf '%s\n' 'Commit blocked: JavaScript files must be converted to TypeScript:'
+	printf '  %s\n' "$forbidden_files"
+	exit 1
+fi
+
 npm run lint-staged

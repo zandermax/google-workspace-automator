@@ -1,4 +1,4 @@
-import DriveQuery from './DriveQuery';
+import DriveQuery from './00-DriveQuery';
 
 type OperandExtender = (operand: string) => {
 	[x: string]: (value: string) => DriveFileQuery;
