@@ -43,7 +43,8 @@
 		"lint-staged": "lint-staged",
 		"prepare": "husky install",
 		"push": "npm run clean-build && npm run format && npm run lint && npm run build && pwd && cd ./dist && clasp push",
-		"pull:remote": "tsx scripts/pull-remote.ts"
+		"pull:remote": "tsx scripts/pull-remote.ts",
+		"test": "node --import tsx --test tests/*.test.ts"
 	},
 	"version": "1.0.0"
 }
