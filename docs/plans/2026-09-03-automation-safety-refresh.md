@@ -2,7 +2,7 @@
 
 ## Plan Metadata
 
-- Status: ready
+- Status: in-progress
 - Mode: autopilot
 - Canonical location: `docs/plans/2026-09-03-automation-safety-refresh.md`
 - Last updated: 2026-09-03
@@ -26,9 +26,9 @@
 
 ## Current State
 
-- Current phase: not started
-- Current step: not started
-- Next action: Elaborate Phase 1 immediately before execution, then run its focused tests before proceeding.
+- Current phase: Phase 1 - Gmail Query And Mutation Safety
+- Current step: P1-S1 - establish regression tests and choose the mutation-safe execution boundary
+- Next action: Implement P1-S1 in the query/test slice, then run the focused Phase 1 tests.
 - Blockers: none
 
 ## Decisions
@@ -69,13 +69,19 @@ A corrected Gmail query execution path for destructive callers, with regression 
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [ ] **P1-S1 - Establish executable regression cases.** Add focused tests for `after()` and `before()` query strings, month/year/leap-day boundaries, stable pagination over more than 100 results, and a shrinking result set caused by processing. Use deterministic mocked search responses and assert both returned items and search-call arguments. Keep the tests close to the existing Node test conventions and avoid testing a copied implementation.
+- [ ] **P1-S2 - Correct date query construction.** Update `GmailQuery.after()` and `GmailQuery.before()` to emit the corresponding Gmail operator with a one-based month and calendar day-of-month. Preserve chaining and existing query formatting. Use the tests from P1-S1 as the acceptance contract.
+- [ ] **P1-S3 - Introduce mutation-safe batch processing.** Refactor the shared Gmail execution path or its destructive callers so matching thread identities are collected using stable pages before those threads are trashed or otherwise removed from the search result. Preserve bounded page sizes and avoid changing non-mutating query behavior unnecessarily. Do not solve this by merely incrementing an offset against a result set that callers mutate.
+- [ ] **P1-S4 - Migrate affected cleanup callers.** Apply the mutation-safe path to existing destructive Gmail jobs that currently iterate and mutate matching results, including old unread, promotions, updates, bot SMS, and recycle flows where the shared contract applies. Keep labeling-before-trash behavior and existing counts intact.
+- [ ] **P1-S5 - Validate the phase and prepare the handoff.** Run focused query/pagination tests, TypeScript compilation, lint, and the Apps Script build. Inspect the diff for scope and confirm no public trigger or cleanup entry-point names changed. Stop only when the phase is self-contained and ready for the user's commit.
 
 ### Validation
 
-- Run focused Gmail query and mutation regression tests.
-- Run TypeScript compilation for the touched source.
-- Confirm the diff contains only query execution, date helper, and directly associated test changes.
+- Run the focused query/date/pagination tests added in P1-S1.
+- Run `npx tsc`, `npm run lint`, and `npm run build`.
+- Confirm a mocked shrinking-result scenario processes every original candidate exactly once.
+- Confirm date tests include January, December, year transitions, and leap-day behavior.
+- Confirm the diff contains only query execution, date helper, affected destructive callers, and directly associated tests.
 
 ### Checkpoint
 
@@ -269,3 +275,5 @@ Automated go/no-go gate: manifest validation, build, lint, and tests pass. Stop 
 - 2026-09-03: Identified deployment scripts that format and lint with write/fix behavior before building.
 - 2026-09-03: Identified potentially unused advanced services in `appsscript.json`; confirm usage before removing any.
 - 2026-09-03: Plan ready for autopilot execution with six user-owned commit boundaries.
+- 2026-09-03: Phase 1 elaborated. The mutation fix must collect stable candidates before destructive mutation; offset arithmetic alone is insufficient when Gmail search results shrink between pages.
+- 2026-09-03: Current execution step is P1-S1; all later phase steps remain intentionally unelaborated.
