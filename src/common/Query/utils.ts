@@ -1,3 +1,5 @@
-export const checkQuery = (query = '') => {
-	if (!query) throw new Error('No query specified');
+export const checkQuery = (query: string | null | undefined = '') => {
+	if (typeof query !== 'string' || query.trim() === '') {
+		throw new Error('No query specified');
+	}
 };

@@ -11,24 +11,27 @@ import {
 } from '@/types/Gmail';
 import { type TimePeriod } from '@/types/Gmail/dateAndTime';
 
-// Same order as https://support.google.com/mail/answer/7190?hl=en
+type GmailSearch = (query: string, start?: number, max?: number) => unknown[];
 
-export default class GmailQuery extends Query<typeof GmailApp['search']> {
-	public constructor(startQuery?: string) {
-		 
-		super(GmailApp.search, startQuery);
+const getGmailSearch = (): GmailSearch => {
+	const gmailApp = globalThis as typeof globalThis & {
+		GmailApp?: { search: GmailSearch };
+	};
+	const search = gmailApp.GmailApp?.search;
+
+	if (typeof search !== 'function') {
+		throw new Error('GmailApp.search is not available in this runtime.');
 	}
 
-	// ************************************************************************** //
-	// ***************************** Query operators **************************** //
-	// ************************************************************************** //
+	return search;
+};
 
-	/**
-	 * Used in operations that will convert this object to a string.
-	 *
-	 * @returns the query string
-	 */
-	public readonly toString = () => this.query;
+// Same order as https://support.google.com/mail/answer/7190?hl=en
+
+export default class GmailQuery extends Query<GmailSearch> {
+	public constructor(startQuery?: string) {
+		super(getGmailSearch(), startQuery);
+	}
 
 	/**
 	 * Specify the sender
@@ -218,8 +221,8 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	 * @param date.day day to use for search
 	 */
 	public readonly after = (date: Date) => {
-		this.query += ` ${date.getFullYear()}/${add0(date.getMonth())}/${add0(
-			date.getDay()
+		this.query += ` after:${date.getUTCFullYear()}/${add0(date.getUTCMonth() + 1)}/${add0(
+			date.getUTCDate()
 		)}`;
 		return this;
 	};
@@ -233,8 +236,8 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	 * @param date.day day to use for search
 	 */
 	public readonly before = (date: Date) => {
-		this.query += ` ${date.getFullYear()}/${add0(date.getMonth())}/${add0(
-			date.getDay()
+		this.query += ` before:${date.getUTCFullYear()}/${add0(date.getUTCMonth() + 1)}/${add0(
+			date.getUTCDate()
 		)}`;
 		return this;
 	};
@@ -338,16 +341,20 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	public *[Symbol.iterator]() {
 		let start = 0;
 		const maxResults = 100;
-		let results = this.search(this.query, start, maxResults) as ReturnType<
-			typeof GmailApp.search
-		>;
+		let results = this.search(
+			this.query,
+			start,
+			maxResults
+		) as ReturnType<GmailSearch>;
 
 		while (results.length) {
 			yield results;
 			start += maxResults;
-			results = this.search(this.query, start, maxResults) as ReturnType<
-				typeof GmailApp.search
-			>;
+			results = this.search(
+				this.query,
+				start,
+				maxResults
+			) as ReturnType<GmailSearch>;
 		}
 	}
 }

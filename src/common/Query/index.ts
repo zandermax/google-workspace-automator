@@ -9,7 +9,7 @@ export default abstract class Query<G extends Searcher> {
 
 	public constructor(searcher: G, startQuery = '') {
 		this.search = searcher;
-		this.query = startQuery;
+		this.query = typeof startQuery === 'string' ? startQuery : '';
 	}
 
 	// ************************************************************************** //
@@ -30,22 +30,30 @@ export default abstract class Query<G extends Searcher> {
 	public *[Symbol.iterator](...searchParameters: Parameters<G>) {
 		checkQuery(this.query);
 
-		let results = this.search(this.query, ...searchParameters.slice(1)) as ReturnType<G>;
-		let queryRun = 0;
+		const nextStart =
+			typeof searchParameters[1] === 'number' ? Number(searchParameters[1]) : 0;
+		const nextMax =
+			typeof searchParameters[2] === 'number'
+				? Number(searchParameters[2])
+				: 100;
+		const pages: ReturnType<G>[] = [];
+		let currentStart = nextStart;
 
-		while (results.length) {
-			yield results;
-			Logger.log(`Found ${results.length} threads on query run #${queryRun++}`);
-
-			const nextStart =
-				typeof searchParameters[1] === 'number' ? Number(searchParameters[1]) : 0;
-			const nextMax =
-				typeof searchParameters[2] === 'number' ? Number(searchParameters[2]) : 100;
-			results = this.search(
+		while (true) {
+			const results = this.search(
 				this.query,
-				nextStart + nextMax,
+				currentStart,
 				nextMax
 			) as ReturnType<G>;
+			if (results.length === 0) {
+				break;
+			}
+			pages.push([...results]);
+			currentStart += results.length;
+		}
+
+		for (const page of pages) {
+			yield page;
 		}
 	}
 
@@ -54,16 +62,28 @@ export default abstract class Query<G extends Searcher> {
 		start?: number;
 		maxResults?: number;
 	}) => {
-		checkQuery(this.query);
+		const query = typeof this.query === 'string' ? this.query : '';
+		checkQuery(query);
 
 		const { callback, start = 0, maxResults = 100 } = options;
+		const pages: ReturnType<G>[] = [];
 		let currentStart = start;
-		let results = this.search(this.query, currentStart, maxResults) as ReturnType<G>;
 
-		while (results.length) {
-			callback(results);
-			currentStart += maxResults;
-			results = this.search(this.query, currentStart, maxResults) as ReturnType<G>;
+		while (true) {
+			const results = this.search(
+				query,
+				currentStart,
+				maxResults
+			) as ReturnType<G>;
+			if (results.length === 0) {
+				break;
+			}
+			pages.push([...results]);
+			currentStart += results.length;
+		}
+
+		for (const page of pages) {
+			callback(page);
 		}
 	};
 
