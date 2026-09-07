@@ -6,7 +6,11 @@ import GmailQuery from '../src/Gmail/GmailQuery';
 
 const globalWithGmail = globalThis as typeof globalThis & {
 	GmailApp: {
-		search: (query: string, start?: number, max?: number) => unknown[];
+		search: (
+			query: string,
+			start?: number,
+			max?: number
+		) => GoogleAppsScript.Gmail.GmailThread[];
 	};
 };
 

@@ -11,7 +11,11 @@ import {
 } from '@/types/Gmail';
 import { type TimePeriod } from '@/types/Gmail/dateAndTime';
 
-type GmailSearch = (query: string, start?: number, max?: number) => unknown[];
+type GmailSearch = (
+	query: string,
+	start?: number,
+	max?: number
+) => GoogleAppsScript.Gmail.GmailThread[];
 
 const getGmailSearch = (): GmailSearch => {
 	const gmailApp = globalThis as typeof globalThis & {

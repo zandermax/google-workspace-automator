@@ -48,7 +48,7 @@ export default abstract class Query<G extends Searcher> {
 			if (results.length === 0) {
 				break;
 			}
-			pages.push([...results]);
+			pages.push([...results] as ReturnType<G>);
 			currentStart += results.length;
 		}
 
@@ -78,7 +78,7 @@ export default abstract class Query<G extends Searcher> {
 			if (results.length === 0) {
 				break;
 			}
-			pages.push([...results]);
+			pages.push([...results] as ReturnType<G>);
 			currentStart += results.length;
 		}
 
