@@ -27,8 +27,8 @@
 ## Current State
 
 - Current phase: Phase 1 - Gmail Query And Mutation Safety
-- Current step: P1-S1 - establish regression tests and choose the mutation-safe execution boundary
-- Next action: Implement P1-S1 in the query/test slice, then run the focused Phase 1 tests.
+- Current step: P1-S2 - Correct date query construction
+- Next action: Implement P1-S2 in GmailQuery and verify against date test cases.
 - Blockers: none
 
 ## Decisions
@@ -69,7 +69,7 @@ A corrected Gmail query execution path for destructive callers, with regression 
 
 ### Steps
 
-- [ ] **P1-S1 - Establish executable regression cases.** Add focused tests for `after()` and `before()` query strings, month/year/leap-day boundaries, stable pagination over more than 100 results, and a shrinking result set caused by processing. Use deterministic mocked search responses and assert both returned items and search-call arguments. Keep the tests close to the existing Node test conventions and avoid testing a copied implementation.
+- [x] **P1-S1 - Establish executable regression cases.** Add focused tests for `after()` and `before()` query strings, month/year/leap-day boundaries, stable pagination over more than 100 results, and a shrinking result set caused by processing. Use deterministic mocked search responses and assert both returned items and search-call arguments. Keep the tests close to the existing Node test conventions and avoid testing a copied implementation.
 - [ ] **P1-S2 - Correct date query construction.** Update `GmailQuery.after()` and `GmailQuery.before()` to emit the corresponding Gmail operator with a one-based month and calendar day-of-month. Preserve chaining and existing query formatting. Use the tests from P1-S1 as the acceptance contract.
 - [ ] **P1-S3 - Introduce mutation-safe batch processing.** Refactor the shared Gmail execution path or its destructive callers so matching thread identities are collected using stable pages before those threads are trashed or otherwise removed from the search result. Preserve bounded page sizes and avoid changing non-mutating query behavior unnecessarily. Do not solve this by merely incrementing an offset against a result set that callers mutate.
 - [ ] **P1-S4 - Migrate affected cleanup callers.** Apply the mutation-safe path to existing destructive Gmail jobs that currently iterate and mutate matching results, including old unread, promotions, updates, bot SMS, and recycle flows where the shared contract applies. Keep labeling-before-trash behavior and existing counts intact.
@@ -277,3 +277,4 @@ Automated go/no-go gate: manifest validation, build, lint, and tests pass. Stop 
 - 2026-09-03: Plan ready for autopilot execution with six user-owned commit boundaries.
 - 2026-09-03: Phase 1 elaborated. The mutation fix must collect stable candidates before destructive mutation; offset arithmetic alone is insufficient when Gmail search results shrink between pages.
 - 2026-09-03: Current execution step is P1-S1; all later phase steps remain intentionally unelaborated.
+- 2026-09-07: Completed P1-S1. Added comprehensive regression tests in tests/gmail-query-safety.test.ts covering after()/before() query construction (single/double digit month and days, leap years, year boundaries, chaining), stable pagination over 100 results, shrinking result sets from caller mutation (for both processSync and Symbol.iterator), custom start/max pagination options, and asserting exact search-call arguments.
