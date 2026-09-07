@@ -217,12 +217,9 @@ export default class GmailQuery extends Query<GmailSearch> {
 	};
 
 	/**
-	 * Search for messages sent after a certain time period
+	 * Search for messages sent after a certain date
 	 *
-	 * @param date to search for messages that were sent after
-	 * @param date.year year to use for search - default is this year
-	 * @param date.month month to use for search
-	 * @param date.day day to use for search
+	 * @param date Date to search for messages sent after (uses UTC year, month, date)
 	 */
 	public readonly after = (date: Date) => {
 		this.query += ` after:${date.getUTCFullYear()}/${add0(date.getUTCMonth() + 1)}/${add0(
@@ -232,12 +229,9 @@ export default class GmailQuery extends Query<GmailSearch> {
 	};
 
 	/**
-	 * Search for messages sent before a certain time period
+	 * Search for messages sent before a certain date
 	 *
-	 * @param date to search for messages that were sent before
-	 * @param date.year year to use for search - default is this year
-	 * @param date.month month to use for search
-	 * @param date.day day to use for search
+	 * @param date Date to search for messages sent before (uses UTC year, month, date)
 	 */
 	public readonly before = (date: Date) => {
 		this.query += ` before:${date.getUTCFullYear()}/${add0(date.getUTCMonth() + 1)}/${add0(
@@ -288,7 +282,7 @@ export default class GmailQuery extends Query<GmailSearch> {
 	 *
 	 * @example largerThan("10M"), largerThan(1000000)
 	 */
-	public readonly larger = (largerThanInBytes: number | `${number}M`) => {
+	public readonly largerThan = (largerThanInBytes: number | `${number}M`) => {
 		this.query = ` larger:${largerThanInBytes}`;
 		return this;
 	};
@@ -298,7 +292,7 @@ export default class GmailQuery extends Query<GmailSearch> {
 	 *
 	 * @example smallerThan("10M"), smallerThan(1000000)
 	 */
-	public readonly smaller = (smallerThanInBytes: number | `${number}M`) => {
+	public readonly smallerThan = (smallerThanInBytes: number | `${number}M`) => {
 		this.query = ` smaller:${smallerThanInBytes}`;
 		return this;
 	};
@@ -337,28 +331,4 @@ export default class GmailQuery extends Query<GmailSearch> {
 		this.query = words.map((nextWord) => ` +${nextWord}`).join('');
 		return this;
 	};
-
-	// ************************************************************************** //
-	// *************************** Execution functions ************************** //
-	// ************************************************************************** //
-
-	public *[Symbol.iterator]() {
-		let start = 0;
-		const maxResults = 100;
-		let results = this.search(
-			this.query,
-			start,
-			maxResults
-		) as ReturnType<GmailSearch>;
-
-		while (results.length) {
-			yield results;
-			start += maxResults;
-			results = this.search(
-				this.query,
-				start,
-				maxResults
-			) as ReturnType<GmailSearch>;
-		}
-	}
 }

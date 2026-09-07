@@ -9,11 +9,13 @@ export const deleteOldUpdates = () => {
 		.isNot('read');
 	let count = 0;
 
-	for (const threads of query) {
-		count += threads.length;
-		labelProcessed('Gmail-Old-Updates', threads);
-		GmailApp.moveThreadsToTrash(threads);
-	}
+	query.processSync({
+		callback: (threads) => {
+			count += threads.length;
+			labelProcessed('Gmail-Old-Updates', threads);
+			GmailApp.moveThreadsToTrash(threads);
+		},
+	});
 
 	Logger.log(`Processed ${count} old updates`);
 };

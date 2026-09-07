@@ -27,7 +27,7 @@ export default abstract class Query<G extends Searcher> {
 	// *************************** Execution functions ************************** //
 	// ************************************************************************** //
 
-	public *[Symbol.iterator](...searchParameters: Parameters<G>) {
+	public *[Symbol.iterator](...searchParameters: Partial<Parameters<G>>) {
 		checkQuery(this.query);
 
 		const nextStart =

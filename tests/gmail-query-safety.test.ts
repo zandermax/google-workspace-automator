@@ -3,6 +3,10 @@ import { strict as assert } from 'node:assert';
 
 import Query from '../src/common/Query';
 import GmailQuery from '../src/Gmail/GmailQuery';
+import { deleteOldUnread } from '../src/_s/Gmail/delete-old-unread';
+import { deleteOldPromos } from '../src/_s/Gmail/delete-old-promotions';
+import { deleteOldUpdates } from '../src/_s/Gmail/delete-old-updates';
+import { deleteBotSmsEmails } from '../src/_s/Gmail/delete-bot-sms';
 
 const globalWithGmail = globalThis as typeof globalThis & {
 	GmailApp: {
@@ -246,4 +250,217 @@ test('Query pagination respects custom start and maxResults options', () => {
 		{ query: 'subject:test', start: 70, max: 25 },
 		{ query: 'subject:test', start: 75, max: 25 },
 	]);
+});
+
+test('GmailQuery iterates mutation-safely using inherited Query[Symbol.iterator]', () => {
+	const allIds = Array.from(
+		{ length: 130 },
+		(_, index) => `thread-${index + 1}`
+	);
+	let liveIds = [...allIds];
+	const searchCalls: { query: string; start: number; max: number }[] = [];
+
+	globalWithGmail.GmailApp.search = (query: string, start = 0, max = 100) => {
+		searchCalls.push({ query, start, max });
+		return liveIds
+			.slice(start, start + max)
+			.map((id) => ({ id })) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+	};
+
+	const query = new GmailQuery('subject:test');
+	const processed: string[] = [];
+
+	for (const threads of query) {
+		for (const thread of threads as unknown as { id: string }[]) {
+			processed.push(thread.id);
+		}
+		liveIds = liveIds.filter(
+			(id) =>
+				!threads.some(
+					(thread) => (thread as unknown as { id: string }).id === id
+				)
+		);
+	}
+
+	assert.deepEqual(processed, allIds);
+	assert.deepEqual(searchCalls, [
+		{ query: 'subject:test', start: 0, max: 100 },
+		{ query: 'subject:test', start: 100, max: 100 },
+		{ query: 'subject:test', start: 130, max: 100 },
+	]);
+});
+
+test('deleteOldUnread processes all matching threads without pagination skips and labels before trashing', () => {
+	const allIds = Array.from(
+		{ length: 130 },
+		(_, index) => `unread-${index + 1}`
+	);
+	let liveIds = [...allIds];
+	const trashedIds: string[] = [];
+	const labeledBatches: { label: string; ids: string[] }[] = [];
+
+	globalWithGmail.GmailApp = {
+		search: (_query: string, start = 0, max = 100) => {
+			return liveIds
+				.slice(start, start + max)
+				.map((id) => ({
+					id,
+				})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+		},
+		createLabel: (name: string) => ({
+			getName: () => name,
+			addToThreads: (threads: GoogleAppsScript.Gmail.GmailThread[]) => {
+				labeledBatches.push({
+					label: name,
+					ids: threads.map((t) => (t as unknown as { id: string }).id),
+				});
+			},
+		}),
+		moveThreadsToTrash: (threads: GoogleAppsScript.Gmail.GmailThread[]) => {
+			for (const thread of threads) {
+				const id = (thread as unknown as { id: string }).id;
+				trashedIds.push(id);
+			}
+			liveIds = liveIds.filter(
+				(id) =>
+					!threads.some(
+						(thread) => (thread as unknown as { id: string }).id === id
+					)
+			);
+		},
+	} as any;
+
+	globalThis.Logger = {
+		log: () => {},
+	} as any;
+
+	deleteOldUnread();
+
+	assert.equal(trashedIds.length, 130);
+	assert.deepEqual(trashedIds, allIds);
+	assert.equal(labeledBatches.length, 2);
+	assert.equal(labeledBatches[0].ids.length, 100);
+	assert.equal(labeledBatches[1].ids.length, 30);
+	assert.deepEqual(
+		labeledBatches.flatMap((b) => b.ids),
+		allIds
+	);
+});
+
+test('deleteOldPromos processes all matching promo threads across multiple pages', () => {
+	const allIds = Array.from(
+		{ length: 110 },
+		(_, index) => `promo-${index + 1}`
+	);
+	let liveIds = [...allIds];
+	const trashedIds: string[] = [];
+
+	globalWithGmail.GmailApp = {
+		search: (_query: string, start = 0, max = 100) => {
+			return liveIds
+				.slice(start, start + max)
+				.map((id) => ({
+					id,
+				})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+		},
+		createLabel: (name: string) => ({
+			getName: () => name,
+			addToThreads: () => {},
+		}),
+		moveThreadsToTrash: (threads: GoogleAppsScript.Gmail.GmailThread[]) => {
+			for (const thread of threads) {
+				trashedIds.push((thread as unknown as { id: string }).id);
+			}
+			liveIds = liveIds.filter(
+				(id) =>
+					!threads.some(
+						(thread) => (thread as unknown as { id: string }).id === id
+					)
+			);
+		},
+	} as any;
+
+	deleteOldPromos();
+
+	assert.equal(trashedIds.length, 110);
+	assert.deepEqual(trashedIds, allIds);
+});
+
+test('deleteOldUpdates processes all matching update threads across multiple pages', () => {
+	const allIds = Array.from(
+		{ length: 110 },
+		(_, index) => `update-${index + 1}`
+	);
+	let liveIds = [...allIds];
+	const trashedIds: string[] = [];
+
+	globalWithGmail.GmailApp = {
+		search: (_query: string, start = 0, max = 100) => {
+			return liveIds
+				.slice(start, start + max)
+				.map((id) => ({
+					id,
+				})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+		},
+		createLabel: (name: string) => ({
+			getName: () => name,
+			addToThreads: () => {},
+		}),
+		moveThreadsToTrash: (threads: GoogleAppsScript.Gmail.GmailThread[]) => {
+			for (const thread of threads) {
+				trashedIds.push((thread as unknown as { id: string }).id);
+			}
+			liveIds = liveIds.filter(
+				(id) =>
+					!threads.some(
+						(thread) => (thread as unknown as { id: string }).id === id
+					)
+			);
+		},
+	} as any;
+
+	deleteOldUpdates();
+
+	assert.equal(trashedIds.length, 110);
+	assert.deepEqual(trashedIds, allIds);
+});
+
+test('deleteBotSmsEmails processes matching bot SMS threads and skips non-matching subjects across pages', () => {
+	const threads = Array.from({ length: 120 }, (_, index) => {
+		const isBot = index % 2 === 0;
+		const id = `sms-${index + 1}`;
+		const subject = isBot
+			? `New text message from 12345`
+			: `New text message from +1234567890`;
+		return {
+			id,
+			getFirstMessageSubject: () => subject,
+			moveToTrash: () => {
+				trashed.push(id);
+			},
+		};
+	});
+
+	let liveThreads = [...threads];
+	const trashed: string[] = [];
+
+	globalWithGmail.GmailApp = {
+		search: (_query: string, start = 0, max = 100) => {
+			return liveThreads
+				.slice(start, start + max)
+				.map((t) => t) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+		},
+		createLabel: (name: string) => ({
+			getName: () => name,
+			addToThreads: () => {},
+		}),
+	} as any;
+
+	deleteBotSmsEmails();
+
+	// 60 bot messages out of 120 should be trashed
+	assert.equal(trashed.length, 60);
+	for (let i = 0; i < 120; i += 2) {
+		assert.ok(trashed.includes(`sms-${i + 1}`));
+	}
 });
