@@ -1,4 +1,5 @@
 const SOURCE_SCRIPTS = [
+	'Gmail-AI-Sorter',
 	'Gmail-Autorecycle',
 	'Gmail-Old-Invites',
 	'Gmail-Old-Promos',
@@ -12,6 +13,7 @@ export type SourceScript = (typeof SOURCE_SCRIPTS)[number];
  * Neat icons to add to labels
  */
 const scriptEmoji: Record<SourceScript, string> = {
+	'Gmail-AI-Sorter': '🧠',
 	'Gmail-Autorecycle': '♻️',
 	'Gmail-Old-Invites': '📅',
 	'Gmail-Old-Promos': '🤑',

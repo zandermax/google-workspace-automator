@@ -25,9 +25,9 @@
 
 ## Current State
 
-- Current phase: not started
-- Current step: not started
-- Next action: Elaborate Phase 1 steps upon user confirmation to begin.
+- Current phase: Phase 1: Triage Contracts and Message Extraction Layer (Completed)
+- Current step: Phase 1 Checkpoint - commit boundary
+- Next action: User inspects uncommitted changes, commits Phase 1 work, and confirms to start Phase 2.
 - Blockers: none
 
 ## Decisions
@@ -67,7 +67,15 @@ TypeScript type definitions for triage categories, prompt schemas, and action di
 
 ### Steps
 
-_Not yet elaborated. Populate immediately before this phase starts._
+- [x] **P1-S1 - Define TypeScript types and schemas.** Create `src/types/Gmail/triage.ts` with strict types: `TriageCategory` (`triage/personal`, `triage/finance`, `triage/govt`, `triage/receipts`, `triage/newsletters`, `triage/alerts`, `triage/junk`), `AttachmentType` (`photo`, `doc`, `calendar`, `audio`, `video`, `generic`), `ExtractedEmailMetadata`, `TriageClassification` (Gemini output schema), and `TriageActionDirective`.
+- [x] **P1-S2 - Register AI sorter source script.** In `src/Gmail/actions/labelAsProcessed.ts`, add `'Gmail-AI-Sorter'` to `SOURCE_SCRIPTS` with the `🧠` emoji marker in `scriptEmoji`.
+- [x] **P1-S3 - Implement message extraction module.** Create `src/Gmail/extraction.ts` with pure helpers and Apps Script message adapters:
+  - Text sanitizer stripping HTML tags, extra whitespace, and truncating to <=300 characters.
+  - Attachment classifier mapping MIME types to `AttachmentType` and emoji icons (`📷`, `📄`, `📅`, `🎵`, `🎬`, `📎`).
+  - Unsubscribe header parser extracting direct HTTPS URLs and `mailto:` links from message headers.
+  - Overall thread extractor producing `ExtractedEmailMetadata` with safe fallbacks for missing/empty fields.
+- [x] **P1-S4 - Write comprehensive extraction unit tests.** Create `tests/triage-extraction.test.ts` testing snippet truncation, HTML stripping, attachment categorization, edge cases (no subject, empty body, unknown attachment MIME), and unsubscribe header parsing (`<https://...>`, `<mailto:...>`).
+- [x] **P1-S5 - Validate Phase 1.** Run `npm test` and `npm run build` to confirm zero regressions and clean TypeScript/Babel compilation.
 
 ### Validation
 
@@ -260,3 +268,4 @@ feat(entrypoint): wire aiSorter entry points, trigger, and manifest permissions
 - 2026-09-03: Completed baseline automation safety refresh (`2026-09-03-automation-safety-refresh.md`): fixed pagination mutation bugs, calendar parsing, idempotent triggers, and manifest permissions.
 - 2026-09-08: Confirmed build and test health: 59 passing tests, clean TypeScript compilation, and Babel output.
 - 2026-09-08: Restructured `docs/plans/email-sorting-roadmap.md` into canonical executable plan with 5 domain-based phases targeting the Full Gemini Flash AI Pipeline.
+- 2026-09-08: Completed Phase 1: added triage contracts in `src/types/Gmail/triage.ts`, registered `Gmail-AI-Sorter` with `🧠` in `src/Gmail/actions/labelAsProcessed.ts`, implemented extractor in `src/Gmail/extraction.ts`, and added 12 new passing unit tests in `tests/triage-extraction.test.ts` (71 total tests pass, clean build).
