@@ -2,10 +2,10 @@
 
 ## Plan Metadata
 
-- Status: in-progress
+- Status: completed
 - Mode: autopilot
 - Canonical location: `docs/plans/2026-09-03-automation-safety-refresh.md`
-- Last updated: 2026-09-03
+- Last updated: 2026-09-08
 - Goal: Make the existing Google Apps Script cleanup automations safe to extend by removing known pagination, calendar parsing, trigger duplication, testing, deployment, and permission risks.
 - Success criteria:
   - Mutating Gmail queries process all matching threads without offset-based skips.
@@ -26,9 +26,9 @@
 
 ## Current State
 
-- Current phase: Phase 5 - Deployment Command Hygiene (Completed, awaiting commit boundary handoff)
-- Current step: Phase 5 Checkpoint - commit and push boundary
-- Next action: User inspects, commits, and pushes Phase 5 changes before elaborating and starting Phase 6.
+- Current phase: Phase 6 - Apps Script Manifest Least Privilege (Completed, plan complete)
+- Current step: Phase 6 Checkpoint - final commit and push boundary
+- Next action: User inspects, commits, and pushes Phase 6 changes. Plan is fully accomplished.
 - Blockers: none
 
 ## Decisions
@@ -264,7 +264,10 @@ A manifest containing only the advanced Google services required by the current 
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P6-S1 - Inventory advanced service usage against source code.** Check all TypeScript source files in `src/` for references to `Gmail`, `Drive`, `Docs`, `Sheets`, `DriveActivity`, and `DriveLabels` advanced services. Distinguish built-in Apps Script services (`GmailApp`, `DriveApp`, `Logger`, `ScriptApp`) from optional advanced API services (`Gmail`, `Drive`, `Docs`, etc.).
+- [x] **P6-S2 - Prune unused advanced services from manifest.** Remove unreferenced advanced services from `appsscript.json`. If none of the 6 advanced services are referenced by source code, remove `enabledAdvancedServices` (or empty the list) while preserving top-level properties (`timeZone`, `exceptionLogging`, `runtimeVersion`).
+- [x] **P6-S3 - Add manifest regression test.** Add an assertion in `tests/apps-script-build.test.ts` verifying that `appsscript.json` declares only required services, retains the intended runtime configuration, and is copied verbatim to `dist/appsscript.json` during build.
+- [x] **P6-S4 - Validate Phase 6 and finalize refresh plan.** Run `npm run format:check`, `npm run lint:check`, `npm test`, and `npm run build`. Confirm generated `dist/appsscript.json` is clean and contains no unnecessary advanced services. Record live reauthorization notes and pause at the final commit boundary for user review.
 
 ### Validation
 
@@ -295,3 +298,4 @@ Automated go/no-go gate: manifest validation, build, lint, and tests pass. Stop 
 - 2026-09-07: Completed Phase 2 (P2-S1 through P2-S5). Elaborated Phase 2 steps. Implemented explicit ICS contract in getInviteExpiration requiring UTC Z or date-only values, returning null for named TZID or floating date-times without Z to fail safe rather than silently misinterpreting them as UTC. Refactored deleteOldInvites and dryRunDeleteOldInvites to inspect all messages and attachments in a thread, safely preserving threads with updated future invites or unparseable/unsupported attachments, and using processSync for mutation-safe pagination. Deduplicated and modernized tests/delete-old-invites.test.ts, tests/delete-old-invites-integration.test.ts, and tests/delete-old-invites-dry-run.test.ts to import production functions directly. Fixed infinite loop in test search mock. Validated with npm test (47 passing), npm run lint, and npm run build. Phase 2 reached validated commit boundary.
 - 2026-09-08: Completed Phase 3 (P3-S1 through P3-S3). Elaborated Phase 3 steps. Added comprehensive unit tests in tests/trigger-management.test.ts verifying initial trigger installation, idempotent replacement without duplicate accumulation, preservation of unrelated handlers, multiple duplicate cleanup, weekly/daily/dry-run schedule helper consistency, and ScriptApp error propagation with logging. Updated src/_t/triggerFactory.ts with removeExistingTriggers to delete pre-existing triggers for the same handler before creating the replacement trigger, logged trigger removals and creations, logged and rethrown creation errors, and aligned weeklyTrigger return value. Validated with npm test (54 passing), npm run lint, and npm run build. Phase 3 reached validated commit boundary.
 - 2026-09-08: Completed Phase 4 (P4-S1 through P4-S4). Elaborated Phase 4 steps. Updated package.json test script to discover all test files across tests/ and src/ via node --import tsx --test 'tests/**/\*.test.ts' 'src/**/*.test.ts', bringing active test coverage to 58 tests. Added beforeEach/afterEach mock restoration hooks across tests/gmail-query-safety.test.ts, tests/delete-old-invites-integration.test.ts, and tests/trigger-management.test.ts ensuring GmailApp, ScriptApp, and Logger stubs are completely isolated and restored between tests. Documented npm test, coverage scopes, and the GAS runtime boundary in README.md. Validated with npm test (58 passing), npm run lint, and npm run build. Phase 4 reached validated commit boundary.- 2026-09-08: Completed Phase 5 (P5-S1 through P5-S4). Elaborated Phase 5 steps. Added check-only commands format:check (prettier --cache --check .) and lint:check (eslint --cache .) in package.json, and added .prettierignore to ignore build/snapshot output. Refactored npm run push to eliminate implicit mutating format and lint --fix steps, executing clean-build, build, and clasp push. Updated README deployment instructions and command documentation to reflect non-mutating deployment checks. Verified dry deployment leaves tracked source files unmodified via read-only git status inspection. Validated with format:check, lint:check, npm test (58 passing), and npm run build. Phase 5 reached validated commit boundary.
+- 2026-09-08: Completed Phase 6 (P6-S1 through P6-S4). Elaborated Phase 6 steps. Audited source code for advanced service usage; confirmed all callers use built-in services (GmailApp, DriveApp, ScriptApp, Logger) and none of the 6 enabled advanced services (gmail v1, drive v2, docs v1, sheets v4, driveactivity v2, drivelabels v2) were used. Pruned enabledAdvancedServices from appsscript.json while retaining V8 runtime, America/New_York timezone, and STACKDRIVER logging. Added regression test in tests/apps-script-build.test.ts verifying least-privilege manifest and build copy. Validated with format:check, lint:check, npm test (59 passing), and npm run build. All 6 phases of the automation safety refresh plan are complete.

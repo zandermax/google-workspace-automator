@@ -82,3 +82,25 @@ test('excludes Node test files from the Apps Script build', () => {
 
 	assert.match(packageJson.scripts.build, /--ignore ['"]?\*\*\/\*.test\.ts/);
 });
+
+test('manifest enforces least privilege and excludes unused advanced services', () => {
+	const manifest = JSON.parse(
+		readFileSync(new URL('../appsscript.json', import.meta.url), 'utf8')
+	) as {
+		dependencies?: { enabledAdvancedServices?: unknown[] };
+		runtimeVersion: string;
+		timeZone: string;
+		exceptionLogging: string;
+	};
+
+	assert.equal(manifest.runtimeVersion, 'V8');
+	assert.equal(manifest.timeZone, 'America/New_York');
+	assert.equal(manifest.exceptionLogging, 'STACKDRIVER');
+
+	const advancedServices = manifest.dependencies?.enabledAdvancedServices ?? [];
+	assert.equal(
+		advancedServices.length,
+		0,
+		'Manifest should not enable unused advanced services'
+	);
+});
