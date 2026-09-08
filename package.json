@@ -39,10 +39,12 @@
 		"clean": "rm -rf ./{node_modules}",
 		"clean-build": "if [ -d ./dist ]; then find ./dist -mindepth 1 ! -name '*.json' -exec rm -rf {} +; fi",
 		"format": "prettier --cache --write .",
+		"format:check": "prettier --cache --check .",
 		"lint": "eslint --fix --cache .",
+		"lint:check": "eslint --cache .",
 		"lint-staged": "lint-staged",
 		"prepare": "husky install",
-		"push": "npm run clean-build && npm run format && npm run lint && npm run build && pwd && cd ./dist && clasp push",
+		"push": "npm run clean-build && npm run build && cd ./dist && clasp push",
 		"pull:remote": "tsx scripts/pull-remote.ts",
 		"test": "node --import tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'"
 	},

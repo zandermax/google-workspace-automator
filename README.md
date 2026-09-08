@@ -232,11 +232,11 @@ npm run push
 
 This script does the following:
 
-1. removes stale generated files from `dist/`
-2. formats the repo
-3. lints the repo
-4. builds the TypeScript sources into `dist/`
-5. runs `clasp push` from inside `dist/`
+1. removes stale generated files from `dist/` via `npm run clean-build`
+2. builds the TypeScript sources and manifest into `dist/` via `npm run build`
+3. runs `clasp push` from inside `dist/`
+
+Code formatting (`npm run format`) and lint fixes (`npm run lint`) are intentional maintenance commands and are not executed during deployment to avoid mutating the working tree. Use `npm run format:check` and `npm run lint:check` for non-mutating validation in CI or before pushing.
 
 That means the generated `dist` folder is the actual payload pushed to Google Apps Script.
 
@@ -320,7 +320,9 @@ npm install
 npm test
 npm run build
 npm run format
+npm run format:check
 npm run lint
+npm run lint:check
 npm run push
 ```
 

@@ -6,7 +6,7 @@ const SOURCE_SCRIPTS = [
 	'Gmail-Old-Updates',
 	'Gmail-SMS-Bot-Recycler',
 ] as const;
-export type SourceScript = typeof SOURCE_SCRIPTS[number];
+export type SourceScript = (typeof SOURCE_SCRIPTS)[number];
 
 /**
  * Neat icons to add to labels
@@ -29,8 +29,7 @@ const scriptEmoji: Record<SourceScript, string> = {
 export const labelProcessed = (
 	sourceScript: SourceScript,
 	threads:
-		| GoogleAppsScript.Gmail.GmailThread
-		| GoogleAppsScript.Gmail.GmailThread[]
+		GoogleAppsScript.Gmail.GmailThread | GoogleAppsScript.Gmail.GmailThread[]
 ) => {
 	const threadsToProcess = Array.isArray(threads) ? threads : [threads];
 	const label = GmailApp.createLabel(

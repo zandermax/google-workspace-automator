@@ -26,9 +26,9 @@
 
 ## Current State
 
-- Current phase: Phase 4 - Test Suite Contract And Coverage (Completed, awaiting commit boundary handoff)
-- Current step: Phase 4 Checkpoint - commit and push boundary
-- Next action: User inspects, commits, and pushes Phase 4 changes before elaborating and starting Phase 5.
+- Current phase: Phase 5 - Deployment Command Hygiene (Completed, awaiting commit boundary handoff)
+- Current step: Phase 5 Checkpoint - commit and push boundary
+- Next action: User inspects, commits, and pushes Phase 5 changes before elaborating and starting Phase 6.
 - Blockers: none
 
 ## Decisions
@@ -188,10 +188,10 @@ A single documented test command and a focused suite that exercises production s
 
 ### Steps
 
-- [ ] **P4-S1 - Unify test command in `package.json`.** Update `npm test` script to discover all test files across `tests/**/*.test.ts` and `src/**/*.test.ts` via Node test runner with `tsx`, ensuring tests like `src/Gmail/sorter.test.ts` are not silently omitted.
-- [ ] **P4-S2 - Isolate global stubs across test suites.** Add setup and teardown hooks (`beforeEach`/`afterEach`) in test suites that mock globals (`tests/gmail-query-safety.test.ts`, `tests/delete-old-invites-integration.test.ts`, and `tests/trigger-management.test.ts`) so that `GmailApp`, `ScriptApp`, and `Logger` mocks are restored and do not leak across tests.
-- [ ] **P4-S3 - Document test command and GAS runtime boundary.** Add clear testing documentation in `README.md` explaining how to run local tests, what is verified locally (pure logic, query builders, mock integration, trigger idempotence, build transforms), and the boundary: local tests run on Node.js using mocks and do not prove runtime execution inside Google Apps Script.
-- [ ] **P4-S4 - Validate Phase 4 and prepare checkpoint.** Run `npm test`, `npm run lint`, and `npm run build`. Confirm all 58 tests pass offline without credentials or network calls, and pause at the commit boundary for user review.
+- [x] **P4-S1 - Unify test command in `package.json`.** Update `npm test` script to discover all test files across `tests/**/*.test.ts` and `src/**/*.test.ts` via Node test runner with `tsx`, ensuring tests like `src/Gmail/sorter.test.ts` are not silently omitted.
+- [x] **P4-S2 - Isolate global stubs across test suites.** Add setup and teardown hooks (`beforeEach`/`afterEach`) in test suites that mock globals (`tests/gmail-query-safety.test.ts`, `tests/delete-old-invites-integration.test.ts`, and `tests/trigger-management.test.ts`) so that `GmailApp`, `ScriptApp`, and `Logger` mocks are restored and do not leak across tests.
+- [x] **P4-S3 - Document test command and GAS runtime boundary.** Add clear testing documentation in `README.md` explaining how to run local tests, what is verified locally (pure logic, query builders, mock integration, trigger idempotence, build transforms), and the boundary: local tests run on Node.js using mocks and do not prove runtime execution inside Google Apps Script.
+- [x] **P4-S4 - Validate Phase 4 and prepare checkpoint.** Run `npm test`, `npm run lint`, and `npm run build`. Confirm all 58 tests pass offline without credentials or network calls, and pause at the commit boundary for user review.
 
 ### Validation
 
@@ -226,7 +226,10 @@ Separate write-oriented local maintenance commands from read-only deployment che
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P5-S1 - Add check-only formatting and linting commands.** Expose `format:check` (`prettier --cache --check .`) and `lint:check` (`eslint --cache .`) in `package.json` for read-only validation in CI/deployments, while retaining `format` (`prettier --cache --write .`) and `lint` (`eslint --fix --cache .`) for intentional local maintenance. Add `.prettierignore` to exclude `dist/`, `.remote/`, and `.git/`.
+- [x] **P5-S2 - Remove mutating steps from deployment pipeline.** Update `npm run push` in `package.json` so it runs `clean-build`, `build`, and `clasp push` without invoking write-oriented `format` or `lint --fix` as side effects.
+- [x] **P5-S3 - Update README deployment and script instructions.** Update `README.md` deployment descriptions and useful commands list to reflect the non-mutating deployment pipeline and check-only commands.
+- [x] **P5-S4 - Validate Phase 5 and prepare checkpoint.** Run `npm run format:check`, `npm run lint:check`, `npm run build`, and `npm test`. Verify dry deployment preparation (`npm run clean-build && npm run build`) leaves tracked source files completely unmodified via read-only git status inspection, and pause at the commit boundary for user review.
 
 ### Validation
 
@@ -291,3 +294,4 @@ Automated go/no-go gate: manifest validation, build, lint, and tests pass. Stop 
 - 2026-09-07: Completed P1-S3, P1-S4, and P1-S5. Removed broken GmailQuery[Symbol.iterator] override so GmailQuery inherits Query's page prefetching, made Query[Symbol.iterator] callable with zero arguments (Partial<Parameters<G>>), migrated destructive cleanup callers (deleteOldUnread, deleteOldPromos, deleteOldUpdates, deleteBotSmsEmails) to processSync to eliminate offset-based mutation skips, added end-to-end caller tests in tests/gmail-query-safety.test.ts, ran npm test (40 passing), npm run lint, and npm run build. Phase 1 reached validated commit boundary.
 - 2026-09-07: Completed Phase 2 (P2-S1 through P2-S5). Elaborated Phase 2 steps. Implemented explicit ICS contract in getInviteExpiration requiring UTC Z or date-only values, returning null for named TZID or floating date-times without Z to fail safe rather than silently misinterpreting them as UTC. Refactored deleteOldInvites and dryRunDeleteOldInvites to inspect all messages and attachments in a thread, safely preserving threads with updated future invites or unparseable/unsupported attachments, and using processSync for mutation-safe pagination. Deduplicated and modernized tests/delete-old-invites.test.ts, tests/delete-old-invites-integration.test.ts, and tests/delete-old-invites-dry-run.test.ts to import production functions directly. Fixed infinite loop in test search mock. Validated with npm test (47 passing), npm run lint, and npm run build. Phase 2 reached validated commit boundary.
 - 2026-09-08: Completed Phase 3 (P3-S1 through P3-S3). Elaborated Phase 3 steps. Added comprehensive unit tests in tests/trigger-management.test.ts verifying initial trigger installation, idempotent replacement without duplicate accumulation, preservation of unrelated handlers, multiple duplicate cleanup, weekly/daily/dry-run schedule helper consistency, and ScriptApp error propagation with logging. Updated src/_t/triggerFactory.ts with removeExistingTriggers to delete pre-existing triggers for the same handler before creating the replacement trigger, logged trigger removals and creations, logged and rethrown creation errors, and aligned weeklyTrigger return value. Validated with npm test (54 passing), npm run lint, and npm run build. Phase 3 reached validated commit boundary.
+- 2026-09-08: Completed Phase 4 (P4-S1 through P4-S4). Elaborated Phase 4 steps. Updated package.json test script to discover all test files across tests/ and src/ via node --import tsx --test 'tests/**/\*.test.ts' 'src/**/*.test.ts', bringing active test coverage to 58 tests. Added beforeEach/afterEach mock restoration hooks across tests/gmail-query-safety.test.ts, tests/delete-old-invites-integration.test.ts, and tests/trigger-management.test.ts ensuring GmailApp, ScriptApp, and Logger stubs are completely isolated and restored between tests. Documented npm test, coverage scopes, and the GAS runtime boundary in README.md. Validated with npm test (58 passing), npm run lint, and npm run build. Phase 4 reached validated commit boundary.- 2026-09-08: Completed Phase 5 (P5-S1 through P5-S4). Elaborated Phase 5 steps. Added check-only commands format:check (prettier --cache --check .) and lint:check (eslint --cache .) in package.json, and added .prettierignore to ignore build/snapshot output. Refactored npm run push to eliminate implicit mutating format and lint --fix steps, executing clean-build, build, and clasp push. Updated README deployment instructions and command documentation to reflect non-mutating deployment checks. Verified dry deployment leaves tracked source files unmodified via read-only git status inspection. Validated with format:check, lint:check, npm test (58 passing), and npm run build. Phase 5 reached validated commit boundary.

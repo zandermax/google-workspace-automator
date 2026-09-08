@@ -87,5 +87,6 @@ export default abstract class DriveQuery {
 	/**
 	 * "Return items that match either query."
 	 */
-	public readonly or = (condition: string) => this._addOperator('or', condition);
+	public readonly or = (condition: string) =>
+		this._addOperator('or', condition);
 }

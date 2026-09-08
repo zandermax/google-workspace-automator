@@ -18,9 +18,7 @@
 		[
 			"babel-plugin-transform-remove-imports",
 			{
-				"ignore": [
-					"node_modules"
-				],
+				"ignore": ["node_modules"],
 				"removeAll": true,
 				"test": "\\.(ts)$"
 			}

@@ -1,6 +1,8 @@
 import type { PluginObj } from '@babel/core';
 
-const stripExports = ({ types: t }: Parameters<PluginObj['manipulateOptions']>[0]) => ({
+const stripExports = ({
+	types: t,
+}: Parameters<PluginObj['manipulateOptions']>[0]) => ({
 	name: 'strip-exports',
 	visitor: {
 		ExportNamedDeclaration(path: any) {
@@ -19,7 +21,8 @@ const stripExports = ({ types: t }: Parameters<PluginObj['manipulateOptions']>[0
 			}
 
 			if (
-				(t.isClassDeclaration(declaration) || t.isFunctionDeclaration(declaration)) &&
+				(t.isClassDeclaration(declaration) ||
+					t.isFunctionDeclaration(declaration)) &&
 				declaration.id
 			) {
 				path.replaceWith(declaration);
