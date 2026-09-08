@@ -33,17 +33,31 @@ test('identifies future invite end dates for dry-run reporting', () => {
 	});
 });
 
-test('identifies expired timezone-qualified invite end dates', () => {
+test('rejects named local timezone-qualified invite end dates instead of treating as UTC', () => {
 	const now = new Date('2026-09-01T12:00:00.000Z');
 	const result = getInviteExpiration(
 		'DTEND;TZID=America/New_York:20260831T120000',
 		now
 	);
 
-	assert.equal(result?.isExpired, true);
-	assert.equal(result?.eventEnd.getUTCFullYear(), 2026);
-	assert.equal(result?.eventEnd.getUTCMonth(), 7);
-	assert.equal(result?.eventEnd.getUTCDate(), 31);
+	assert.equal(result, null);
+});
+
+test('rejects floating local invite end dates without UTC indicator', () => {
+	const now = new Date('2026-09-01T12:00:00.000Z');
+	const result = getInviteExpiration('DTEND:20260831T120000', now);
+
+	assert.equal(result, null);
+});
+
+test('identifies expired parameterized UTC invite end dates ending in Z', () => {
+	const now = new Date('2026-09-01T12:00:00.000Z');
+	const result = getInviteExpiration('DTEND;TZID=UTC:20260831T120000Z', now);
+
+	assert.deepEqual(result, {
+		eventEnd: new Date('2026-08-31T12:00:00.000Z'),
+		isExpired: true,
+	});
 });
 
 test('unfolds split ICS properties before parsing their end date', () => {
@@ -56,9 +70,14 @@ test('unfolds split ICS properties before parsing their end date', () => {
 
 test('identifies date-only events as expired after their end date', () => {
 	const now = new Date('2026-09-02T12:00:00.000Z');
-	const result = getInviteExpiration('DTEND;VALUE=DATE:20260901', now);
+	const resultWithParam = getInviteExpiration('DTEND;VALUE=DATE:20260901', now);
+	const resultBareDate = getInviteExpiration('DTEND:20260901', now);
 
-	assert.deepEqual(result, {
+	assert.deepEqual(resultWithParam, {
+		eventEnd: new Date('2026-09-01T00:00:00.000Z'),
+		isExpired: true,
+	});
+	assert.deepEqual(resultBareDate, {
 		eventEnd: new Date('2026-09-01T00:00:00.000Z'),
 		isExpired: true,
 	});

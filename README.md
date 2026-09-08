@@ -232,11 +232,11 @@ npm run push
 
 This script does the following:
 
-1. removes stale generated files from `dist/`
-2. formats the repo
-3. lints the repo
-4. builds the TypeScript sources into `dist/`
-5. runs `clasp push` from inside `dist/`
+1. removes stale generated files from `dist/` via `npm run clean-build`
+2. builds the TypeScript sources and manifest into `dist/` via `npm run build`
+3. runs `clasp push` from inside `dist/`
+
+Code formatting (`npm run format`) and lint fixes (`npm run lint`) are intentional maintenance commands and are not executed during deployment to avoid mutating the working tree. Use `npm run format:check` and `npm run lint:check` for non-mutating validation in CI or before pushing.
 
 That means the generated `dist` folder is the actual payload pushed to Google Apps Script.
 
@@ -291,13 +291,38 @@ If you are working on Drive rules, look under `src/Drive/*` and `src/_s/Drive/*`
 
 ---
 
+## Testing and local verification
+
+Run the unified test suite:
+
+```bash
+npm test
+```
+
+This runs all tests in `tests/` and `src/` using Node's native test runner with `tsx`. Tests cover:
+
+- Query syntax generation and date formatting (`GmailQuery`, `DriveQuery`)
+- Mutation-safe query execution and pagination over shrinking result sets
+- Calendar invite expiration parsing (UTC `Z`, date-only values, explicit rejection of unhandled local time zones)
+- Idempotent scheduled trigger management and error logging
+- Babel build transforms, entry-point uniqueness, and output artifacts
+
+### Testing boundary
+
+Local tests execute under Node.js using isolated mocks for Apps Script globals (`GmailApp`, `ScriptApp`, `Logger`). **Local tests do not prove execution inside the live Google Apps Script environment.** Live GAS execution, trigger scheduling, OAuth quota enforcement, and manifest authorization must still be verified in Apps Script after deployment.
+
+---
+
 ## Useful commands
 
 ```bash
 npm install
+npm test
 npm run build
 npm run format
+npm run format:check
 npm run lint
+npm run lint:check
 npm run push
 ```
 

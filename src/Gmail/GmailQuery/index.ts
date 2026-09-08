@@ -11,24 +11,31 @@ import {
 } from '@/types/Gmail';
 import { type TimePeriod } from '@/types/Gmail/dateAndTime';
 
-// Same order as https://support.google.com/mail/answer/7190?hl=en
+type GmailSearch = (
+	query: string,
+	start?: number,
+	max?: number
+) => GoogleAppsScript.Gmail.GmailThread[];
 
-export default class GmailQuery extends Query<typeof GmailApp['search']> {
-	public constructor(startQuery?: string) {
-		 
-		super(GmailApp.search, startQuery);
+const getGmailSearch = (): GmailSearch => {
+	const gmailApp = globalThis as typeof globalThis & {
+		GmailApp?: { search: GmailSearch };
+	};
+	const search = gmailApp.GmailApp?.search;
+
+	if (typeof search !== 'function') {
+		throw new Error('GmailApp.search is not available in this runtime.');
 	}
 
-	// ************************************************************************** //
-	// ***************************** Query operators **************************** //
-	// ************************************************************************** //
+	return search;
+};
 
-	/**
-	 * Used in operations that will convert this object to a string.
-	 *
-	 * @returns the query string
-	 */
-	public readonly toString = () => this.query;
+// Same order as https://support.google.com/mail/answer/7190?hl=en
+
+export default class GmailQuery extends Query<GmailSearch> {
+	public constructor(startQuery?: string) {
+		super(getGmailSearch(), startQuery);
+	}
 
 	/**
 	 * Specify the sender
@@ -210,31 +217,25 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	};
 
 	/**
-	 * Search for messages sent after a certain time period
+	 * Search for messages sent after a certain date
 	 *
-	 * @param date to search for messages that were sent after
-	 * @param date.year year to use for search - default is this year
-	 * @param date.month month to use for search
-	 * @param date.day day to use for search
+	 * @param date Date to search for messages sent after (uses UTC year, month, date)
 	 */
 	public readonly after = (date: Date) => {
-		this.query += ` ${date.getFullYear()}/${add0(date.getMonth())}/${add0(
-			date.getDay()
+		this.query += ` after:${date.getUTCFullYear()}/${add0(date.getUTCMonth() + 1)}/${add0(
+			date.getUTCDate()
 		)}`;
 		return this;
 	};
 
 	/**
-	 * Search for messages sent before a certain time period
+	 * Search for messages sent before a certain date
 	 *
-	 * @param date to search for messages that were sent before
-	 * @param date.year year to use for search - default is this year
-	 * @param date.month month to use for search
-	 * @param date.day day to use for search
+	 * @param date Date to search for messages sent before (uses UTC year, month, date)
 	 */
 	public readonly before = (date: Date) => {
-		this.query += ` ${date.getFullYear()}/${add0(date.getMonth())}/${add0(
-			date.getDay()
+		this.query += ` before:${date.getUTCFullYear()}/${add0(date.getUTCMonth() + 1)}/${add0(
+			date.getUTCDate()
 		)}`;
 		return this;
 	};
@@ -281,7 +282,7 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	 *
 	 * @example largerThan("10M"), largerThan(1000000)
 	 */
-	public readonly larger = (largerThanInBytes: number | `${number}M`) => {
+	public readonly largerThan = (largerThanInBytes: number | `${number}M`) => {
 		this.query = ` larger:${largerThanInBytes}`;
 		return this;
 	};
@@ -291,7 +292,7 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 	 *
 	 * @example smallerThan("10M"), smallerThan(1000000)
 	 */
-	public readonly smaller = (smallerThanInBytes: number | `${number}M`) => {
+	public readonly smallerThan = (smallerThanInBytes: number | `${number}M`) => {
 		this.query = ` smaller:${smallerThanInBytes}`;
 		return this;
 	};
@@ -330,24 +331,4 @@ export default class GmailQuery extends Query<typeof GmailApp['search']> {
 		this.query = words.map((nextWord) => ` +${nextWord}`).join('');
 		return this;
 	};
-
-	// ************************************************************************** //
-	// *************************** Execution functions ************************** //
-	// ************************************************************************** //
-
-	public *[Symbol.iterator]() {
-		let start = 0;
-		const maxResults = 100;
-		let results = this.search(this.query, start, maxResults) as ReturnType<
-			typeof GmailApp.search
-		>;
-
-		while (results.length) {
-			yield results;
-			start += maxResults;
-			results = this.search(this.query, start, maxResults) as ReturnType<
-				typeof GmailApp.search
-			>;
-		}
-	}
 }

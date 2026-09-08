@@ -6,11 +6,14 @@ import { transformFileSync, transformSync } from '@babel/core';
 import stripExports from '../scripts/babel-plugin-strip-exports';
 
 test('strips module exports from Apps Script output', () => {
-	const result = transformSync('export const dryRunDeleteOldInvites = () => 0;', {
-		babelrc: false,
-		configFile: false,
-		plugins: [stripExports],
-	});
+	const result = transformSync(
+		'export const dryRunDeleteOldInvites = () => 0;',
+		{
+			babelrc: false,
+			configFile: false,
+			plugins: [stripExports],
+		}
+	);
 
 	assert.match(result?.code ?? '', /const dryRunDeleteOldInvites = \(\) => 0;/);
 	assert.doesNotMatch(result?.code ?? '', /export|exports/);
@@ -31,7 +34,8 @@ test('removes default exports of existing global declarations', () => {
 
 test('transforms numeric separators unsupported by Apps Script', () => {
 	const result = transformFileSync(
-		new URL('../src/_s/Drive/delete-old-untitled-ss.ts', import.meta.url).pathname
+		new URL('../src/_s/Drive/delete-old-untitled-ss.ts', import.meta.url)
+			.pathname
 	);
 
 	assert.doesNotMatch(result?.code ?? '', /1_000/);
@@ -51,7 +55,10 @@ test('loads DriveQuery before its subclasses', () => {
 	).sort();
 	const driveQueryIndex = fileNames.indexOf('00-DriveQuery.ts');
 
-	assert.ok(driveQueryIndex >= 0, 'DriveQuery must have an early-sort filename');
+	assert.ok(
+		driveQueryIndex >= 0,
+		'DriveQuery must have an early-sort filename'
+	);
 	assert.ok(driveQueryIndex < fileNames.indexOf('DriveFileQuery.ts'));
 	assert.ok(driveQueryIndex < fileNames.indexOf('DriveFolderQuery.ts'));
 });
@@ -74,4 +81,26 @@ test('excludes Node test files from the Apps Script build', () => {
 	) as { scripts: { build: string } };
 
 	assert.match(packageJson.scripts.build, /--ignore ['"]?\*\*\/\*.test\.ts/);
+});
+
+test('manifest enforces least privilege and excludes unused advanced services', () => {
+	const manifest = JSON.parse(
+		readFileSync(new URL('../appsscript.json', import.meta.url), 'utf8')
+	) as {
+		dependencies?: { enabledAdvancedServices?: unknown[] };
+		runtimeVersion: string;
+		timeZone: string;
+		exceptionLogging: string;
+	};
+
+	assert.equal(manifest.runtimeVersion, 'V8');
+	assert.equal(manifest.timeZone, 'America/New_York');
+	assert.equal(manifest.exceptionLogging, 'STACKDRIVER');
+
+	const advancedServices = manifest.dependencies?.enabledAdvancedServices ?? [];
+	assert.equal(
+		advancedServices.length,
+		0,
+		'Manifest should not enable unused advanced services'
+	);
 });

@@ -2,10 +2,10 @@
 
 ## Plan Metadata
 
-- Status: ready
+- Status: completed
 - Mode: autopilot
 - Canonical location: `docs/plans/2026-09-03-automation-safety-refresh.md`
-- Last updated: 2026-09-03
+- Last updated: 2026-09-08
 - Goal: Make the existing Google Apps Script cleanup automations safe to extend by removing known pagination, calendar parsing, trigger duplication, testing, deployment, and permission risks.
 - Success criteria:
   - Mutating Gmail queries process all matching threads without offset-based skips.
@@ -26,9 +26,9 @@
 
 ## Current State
 
-- Current phase: not started
-- Current step: not started
-- Next action: Elaborate Phase 1 immediately before execution, then run its focused tests before proceeding.
+- Current phase: Phase 6 - Apps Script Manifest Least Privilege (Completed, plan complete)
+- Current step: Phase 6 Checkpoint - final commit and push boundary
+- Next action: User inspects, commits, and pushes Phase 6 changes. Plan is fully accomplished.
 - Blockers: none
 
 ## Decisions
@@ -69,13 +69,19 @@ A corrected Gmail query execution path for destructive callers, with regression 
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P1-S1 - Establish executable regression cases.** Add focused tests for `after()` and `before()` query strings, month/year/leap-day boundaries, stable pagination over more than 100 results, and a shrinking result set caused by processing. Use deterministic mocked search responses and assert both returned items and search-call arguments. Keep the tests close to the existing Node test conventions and avoid testing a copied implementation.
+- [x] **P1-S2 - Correct date query construction.** Update `GmailQuery.after()` and `GmailQuery.before()` to emit the corresponding Gmail operator with a one-based month and calendar day-of-month. Preserve chaining and existing query formatting. Use the tests from P1-S1 as the acceptance contract.
+- [x] **P1-S3 - Introduce mutation-safe batch processing.** Refactor the shared Gmail execution path or its destructive callers so matching thread identities are collected using stable pages before those threads are trashed or otherwise removed from the search result. Preserve bounded page sizes and avoid changing non-mutating query behavior unnecessarily. Do not solve this by merely incrementing an offset against a result set that callers mutate.
+- [x] **P1-S4 - Migrate affected cleanup callers.** Apply the mutation-safe path to existing destructive Gmail jobs that currently iterate and mutate matching results, including old unread, promotions, updates, bot SMS, and recycle flows where the shared contract applies. Keep labeling-before-trash behavior and existing counts intact.
+- [x] **P1-S5 - Validate the phase and prepare the handoff.** Run focused query/pagination tests, TypeScript compilation, lint, and the Apps Script build. Inspect the diff for scope and confirm no public trigger or cleanup entry-point names changed. Stop only when the phase is self-contained and ready for the user's commit.
 
 ### Validation
 
-- Run focused Gmail query and mutation regression tests.
-- Run TypeScript compilation for the touched source.
-- Confirm the diff contains only query execution, date helper, and directly associated test changes.
+- Run the focused query/date/pagination tests added in P1-S1.
+- Run `npx tsc`, `npm run lint`, and `npm run build`.
+- Confirm a mocked shrinking-result scenario processes every original candidate exactly once.
+- Confirm date tests include January, December, year transitions, and leap-day behavior.
+- Confirm the diff contains only query execution, date helper, affected destructive callers, and directly associated tests.
 
 ### Checkpoint
 
@@ -105,7 +111,11 @@ A documented and tested ICS expiration contract used by both real and dry-run in
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P2-S1 - Establish explicit ICS expiration contract tests.** Define tests for supported forms (UTC `Z`, date-only `VALUE=DATE:YYYYMMDD` and `YYYYMMDD`, folded properties) and explicit rejection of unsupported forms (named local `TZID` without silent UTC misinterpretation, malformed or missing DTEND). Ensure tests import `getInviteExpiration` directly.
+- [x] **P2-S2 - Implement safe ICS parsing.** Update `getInviteExpiration` in `src/_s/Gmail/delete-old-invites.ts` to require UTC `Z` for date-times, correctly parse date-only values, and return `null` for named `TZID` or ambiguous local date-times so they fail safe and are never silently treated as UTC.
+- [x] **P2-S3 - Implement thread-level inspection and updated-invite safety.** Refactor `deleteOldInvites` and `dryRunDeleteOldInvites` to scan all messages in a thread, identify all `.ics` attachments, and evaluate thread eligibility: trash if and only if at least one valid `.ics` exists, all `.ics` invites in the thread are expired, and none are unparseable/future. Ensure single labeling/trashing per thread via `markThreadForProcessing` and use `processSync` for safe batch pagination.
+- [x] **P2-S4 - Update and deduplicate invite test suites.** Replace stale duplicated logic in `tests/delete-old-invites.test.ts` and `tests/delete-old-invites-integration.test.ts` with tests exercising the real `getInviteExpiration`, `deleteOldInvites`, and `dryRunDeleteOldInvites`. Include tests for threads with updated invites across multiple messages, multiple attachments, and mutation-free dry-run verification.
+- [x] **P2-S5 - Validate Phase 2 and prepare checkpoint.** Run all invite tests, full `npm test`, `npm run lint`, and `npm run build`. Confirm entry-point signatures are intact and pause at the commit boundary for user review.
 
 ### Validation
 
@@ -140,7 +150,9 @@ Trigger installation behavior that safely reuses or replaces the intended schedu
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P3-S1 - Establish trigger idempotence tests.** Add focused unit tests in `tests/trigger-management.test.ts` for `triggerFactory.ts` exercising repeated installation scenarios, confirming duplicate triggers are not created for the same handler, unrelated triggers for other handlers/spreadsheets are preserved, replacement and creation actions are logged, and `ScriptApp` failures are logged and rethrown.
+- [x] **P3-S2 - Implement idempotent trigger management in `triggerFactory.ts`.** Inspect existing triggers with `ScriptApp.getProjectTriggers()`, remove any existing triggers matching the target `triggerFunction` using `ScriptApp.deleteTrigger()`, create the replacement trigger with the specified schedule, log actions via `Logger.log`, and ensure errors are logged and rethrown. Ensure `weeklyTrigger` returns the created trigger for API consistency.
+- [x] **P3-S3 - Validate Phase 3 and prepare checkpoint.** Run `npm test`, `npm run lint`, and `npm run build`. Confirm all trigger wrapper names (`deleteBotSmsEmailsTrigger`, `deleteOldInvitesTrigger`, `deleteOldPromosTrigger`, `deleteOldUnreadTrigger`, `deleteOldUpdatesTrigger`, `recycleTrigger`, `deleteOldUntitledSsTrigger`) and their schedule semantics are unchanged. Pause at the commit boundary for user review.
 
 ### Validation
 
@@ -176,7 +188,10 @@ A single documented test command and a focused suite that exercises production s
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P4-S1 - Unify test command in `package.json`.** Update `npm test` script to discover all test files across `tests/**/*.test.ts` and `src/**/*.test.ts` via Node test runner with `tsx`, ensuring tests like `src/Gmail/sorter.test.ts` are not silently omitted.
+- [x] **P4-S2 - Isolate global stubs across test suites.** Add setup and teardown hooks (`beforeEach`/`afterEach`) in test suites that mock globals (`tests/gmail-query-safety.test.ts`, `tests/delete-old-invites-integration.test.ts`, and `tests/trigger-management.test.ts`) so that `GmailApp`, `ScriptApp`, and `Logger` mocks are restored and do not leak across tests.
+- [x] **P4-S3 - Document test command and GAS runtime boundary.** Add clear testing documentation in `README.md` explaining how to run local tests, what is verified locally (pure logic, query builders, mock integration, trigger idempotence, build transforms), and the boundary: local tests run on Node.js using mocks and do not prove runtime execution inside Google Apps Script.
+- [x] **P4-S4 - Validate Phase 4 and prepare checkpoint.** Run `npm test`, `npm run lint`, and `npm run build`. Confirm all 58 tests pass offline without credentials or network calls, and pause at the commit boundary for user review.
 
 ### Validation
 
@@ -211,7 +226,10 @@ Separate write-oriented local maintenance commands from read-only deployment che
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P5-S1 - Add check-only formatting and linting commands.** Expose `format:check` (`prettier --cache --check .`) and `lint:check` (`eslint --cache .`) in `package.json` for read-only validation in CI/deployments, while retaining `format` (`prettier --cache --write .`) and `lint` (`eslint --fix --cache .`) for intentional local maintenance. Add `.prettierignore` to exclude `dist/`, `.remote/`, and `.git/`.
+- [x] **P5-S2 - Remove mutating steps from deployment pipeline.** Update `npm run push` in `package.json` so it runs `clean-build`, `build`, and `clasp push` without invoking write-oriented `format` or `lint --fix` as side effects.
+- [x] **P5-S3 - Update README deployment and script instructions.** Update `README.md` deployment descriptions and useful commands list to reflect the non-mutating deployment pipeline and check-only commands.
+- [x] **P5-S4 - Validate Phase 5 and prepare checkpoint.** Run `npm run format:check`, `npm run lint:check`, `npm run build`, and `npm test`. Verify dry deployment preparation (`npm run clean-build && npm run build`) leaves tracked source files completely unmodified via read-only git status inspection, and pause at the commit boundary for user review.
 
 ### Validation
 
@@ -246,7 +264,10 @@ A manifest containing only the advanced Google services required by the current 
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P6-S1 - Inventory advanced service usage against source code.** Check all TypeScript source files in `src/` for references to `Gmail`, `Drive`, `Docs`, `Sheets`, `DriveActivity`, and `DriveLabels` advanced services. Distinguish built-in Apps Script services (`GmailApp`, `DriveApp`, `Logger`, `ScriptApp`) from optional advanced API services (`Gmail`, `Drive`, `Docs`, etc.).
+- [x] **P6-S2 - Prune unused advanced services from manifest.** Remove unreferenced advanced services from `appsscript.json`. If none of the 6 advanced services are referenced by source code, remove `enabledAdvancedServices` (or empty the list) while preserving top-level properties (`timeZone`, `exceptionLogging`, `runtimeVersion`).
+- [x] **P6-S3 - Add manifest regression test.** Add an assertion in `tests/apps-script-build.test.ts` verifying that `appsscript.json` declares only required services, retains the intended runtime configuration, and is copied verbatim to `dist/appsscript.json` during build.
+- [x] **P6-S4 - Validate Phase 6 and finalize refresh plan.** Run `npm run format:check`, `npm run lint:check`, `npm test`, and `npm run build`. Confirm generated `dist/appsscript.json` is clean and contains no unnecessary advanced services. Record live reauthorization notes and pause at the final commit boundary for user review.
 
 ### Validation
 
@@ -269,3 +290,12 @@ Automated go/no-go gate: manifest validation, build, lint, and tests pass. Stop 
 - 2026-09-03: Identified deployment scripts that format and lint with write/fix behavior before building.
 - 2026-09-03: Identified potentially unused advanced services in `appsscript.json`; confirm usage before removing any.
 - 2026-09-03: Plan ready for autopilot execution with six user-owned commit boundaries.
+- 2026-09-03: Phase 1 elaborated. The mutation fix must collect stable candidates before destructive mutation; offset arithmetic alone is insufficient when Gmail search results shrink between pages.
+- 2026-09-03: Current execution step is P1-S1; all later phase steps remain intentionally unelaborated.
+- 2026-09-07: Completed P1-S1. Added comprehensive regression tests in tests/gmail-query-safety.test.ts covering after()/before() query construction (single/double digit month and days, leap years, year boundaries, chaining), stable pagination over 100 results, shrinking result sets from caller mutation (for both processSync and Symbol.iterator), custom start/max pagination options, and asserting exact search-call arguments.
+- 2026-09-07: Completed P1-S2. Confirmed and refined date query construction in GmailQuery.after() and GmailQuery.before() using one-based month and calendar day-of-month, cleaned up JSDoc signatures, and verified against date test cases. All tests pass and build succeeds.
+- 2026-09-07: Completed P1-S3, P1-S4, and P1-S5. Removed broken GmailQuery[Symbol.iterator] override so GmailQuery inherits Query's page prefetching, made Query[Symbol.iterator] callable with zero arguments (Partial<Parameters<G>>), migrated destructive cleanup callers (deleteOldUnread, deleteOldPromos, deleteOldUpdates, deleteBotSmsEmails) to processSync to eliminate offset-based mutation skips, added end-to-end caller tests in tests/gmail-query-safety.test.ts, ran npm test (40 passing), npm run lint, and npm run build. Phase 1 reached validated commit boundary.
+- 2026-09-07: Completed Phase 2 (P2-S1 through P2-S5). Elaborated Phase 2 steps. Implemented explicit ICS contract in getInviteExpiration requiring UTC Z or date-only values, returning null for named TZID or floating date-times without Z to fail safe rather than silently misinterpreting them as UTC. Refactored deleteOldInvites and dryRunDeleteOldInvites to inspect all messages and attachments in a thread, safely preserving threads with updated future invites or unparseable/unsupported attachments, and using processSync for mutation-safe pagination. Deduplicated and modernized tests/delete-old-invites.test.ts, tests/delete-old-invites-integration.test.ts, and tests/delete-old-invites-dry-run.test.ts to import production functions directly. Fixed infinite loop in test search mock. Validated with npm test (47 passing), npm run lint, and npm run build. Phase 2 reached validated commit boundary.
+- 2026-09-08: Completed Phase 3 (P3-S1 through P3-S3). Elaborated Phase 3 steps. Added comprehensive unit tests in tests/trigger-management.test.ts verifying initial trigger installation, idempotent replacement without duplicate accumulation, preservation of unrelated handlers, multiple duplicate cleanup, weekly/daily/dry-run schedule helper consistency, and ScriptApp error propagation with logging. Updated src/_t/triggerFactory.ts with removeExistingTriggers to delete pre-existing triggers for the same handler before creating the replacement trigger, logged trigger removals and creations, logged and rethrown creation errors, and aligned weeklyTrigger return value. Validated with npm test (54 passing), npm run lint, and npm run build. Phase 3 reached validated commit boundary.
+- 2026-09-08: Completed Phase 4 (P4-S1 through P4-S4). Elaborated Phase 4 steps. Updated package.json test script to discover all test files across tests/ and src/ via node --import tsx --test 'tests/**/\*.test.ts' 'src/**/*.test.ts', bringing active test coverage to 58 tests. Added beforeEach/afterEach mock restoration hooks across tests/gmail-query-safety.test.ts, tests/delete-old-invites-integration.test.ts, and tests/trigger-management.test.ts ensuring GmailApp, ScriptApp, and Logger stubs are completely isolated and restored between tests. Documented npm test, coverage scopes, and the GAS runtime boundary in README.md. Validated with npm test (58 passing), npm run lint, and npm run build. Phase 4 reached validated commit boundary.- 2026-09-08: Completed Phase 5 (P5-S1 through P5-S4). Elaborated Phase 5 steps. Added check-only commands format:check (prettier --cache --check .) and lint:check (eslint --cache .) in package.json, and added .prettierignore to ignore build/snapshot output. Refactored npm run push to eliminate implicit mutating format and lint --fix steps, executing clean-build, build, and clasp push. Updated README deployment instructions and command documentation to reflect non-mutating deployment checks. Verified dry deployment leaves tracked source files unmodified via read-only git status inspection. Validated with format:check, lint:check, npm test (58 passing), and npm run build. Phase 5 reached validated commit boundary.
+- 2026-09-08: Completed Phase 6 (P6-S1 through P6-S4). Elaborated Phase 6 steps. Audited source code for advanced service usage; confirmed all callers use built-in services (GmailApp, DriveApp, ScriptApp, Logger) and none of the 6 enabled advanced services (gmail v1, drive v2, docs v1, sheets v4, driveactivity v2, drivelabels v2) were used. Pruned enabledAdvancedServices from appsscript.json while retaining V8 runtime, America/New_York timezone, and STACKDRIVER logging. Added regression test in tests/apps-script-build.test.ts verifying least-privilege manifest and build copy. Validated with format:check, lint:check, npm test (59 passing), and npm run build. All 6 phases of the automation safety refresh plan are complete.

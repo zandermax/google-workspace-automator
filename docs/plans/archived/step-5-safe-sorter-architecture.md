@@ -197,6 +197,7 @@ Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
 Plain text with UTF-8 separators. Gmail renders this cleanly on mobile and desktop.
 
 **Attachment icon examples:**
+
 ```
 [sender] · [1 hour ago] · [2.4 MB]
 React Newsletter Issue #42

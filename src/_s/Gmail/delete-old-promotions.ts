@@ -9,11 +9,13 @@ export const deleteOldPromos = () => {
 		.isNot('read');
 	let count = 0;
 
-	for (const threads of query) {
-		count += threads.length;
-		labelProcessed('Gmail-Old-Promos', threads);
-		GmailApp.moveThreadsToTrash(threads);
-	}
+	query.processSync({
+		callback: (threads) => {
+			count += threads.length;
+			labelProcessed('Gmail-Old-Promos', threads);
+			GmailApp.moveThreadsToTrash(threads);
+		},
+	});
 
 	Logger.log(`Processed ${count} old promos`);
 };
