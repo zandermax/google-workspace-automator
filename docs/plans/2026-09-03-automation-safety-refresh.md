@@ -26,9 +26,9 @@
 
 ## Current State
 
-- Current phase: Phase 2 - Calendar Invite Expiration Correctness (Completed, awaiting commit boundary handoff)
-- Current step: Phase 2 Checkpoint - commit and push boundary
-- Next action: User inspects, commits, and pushes Phase 2 changes before elaborating and starting Phase 3.
+- Current phase: Phase 3 - Idempotent Trigger Management (Completed, awaiting commit boundary handoff)
+- Current step: Phase 3 Checkpoint - commit and push boundary
+- Next action: User inspects, commits, and pushes Phase 3 changes before elaborating and starting Phase 4.
 - Blockers: none
 
 ## Decisions
@@ -150,7 +150,9 @@ Trigger installation behavior that safely reuses or replaces the intended schedu
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P3-S1 - Establish trigger idempotence tests.** Add focused unit tests in `tests/trigger-management.test.ts` for `triggerFactory.ts` exercising repeated installation scenarios, confirming duplicate triggers are not created for the same handler, unrelated triggers for other handlers/spreadsheets are preserved, replacement and creation actions are logged, and `ScriptApp` failures are logged and rethrown.
+- [x] **P3-S2 - Implement idempotent trigger management in `triggerFactory.ts`.** Inspect existing triggers with `ScriptApp.getProjectTriggers()`, remove any existing triggers matching the target `triggerFunction` using `ScriptApp.deleteTrigger()`, create the replacement trigger with the specified schedule, log actions via `Logger.log`, and ensure errors are logged and rethrown. Ensure `weeklyTrigger` returns the created trigger for API consistency.
+- [x] **P3-S3 - Validate Phase 3 and prepare checkpoint.** Run `npm test`, `npm run lint`, and `npm run build`. Confirm all trigger wrapper names (`deleteBotSmsEmailsTrigger`, `deleteOldInvitesTrigger`, `deleteOldPromosTrigger`, `deleteOldUnreadTrigger`, `deleteOldUpdatesTrigger`, `recycleTrigger`, `deleteOldUntitledSsTrigger`) and their schedule semantics are unchanged. Pause at the commit boundary for user review.
 
 ### Validation
 
@@ -285,3 +287,4 @@ Automated go/no-go gate: manifest validation, build, lint, and tests pass. Stop 
 - 2026-09-07: Completed P1-S2. Confirmed and refined date query construction in GmailQuery.after() and GmailQuery.before() using one-based month and calendar day-of-month, cleaned up JSDoc signatures, and verified against date test cases. All tests pass and build succeeds.
 - 2026-09-07: Completed P1-S3, P1-S4, and P1-S5. Removed broken GmailQuery[Symbol.iterator] override so GmailQuery inherits Query's page prefetching, made Query[Symbol.iterator] callable with zero arguments (Partial<Parameters<G>>), migrated destructive cleanup callers (deleteOldUnread, deleteOldPromos, deleteOldUpdates, deleteBotSmsEmails) to processSync to eliminate offset-based mutation skips, added end-to-end caller tests in tests/gmail-query-safety.test.ts, ran npm test (40 passing), npm run lint, and npm run build. Phase 1 reached validated commit boundary.
 - 2026-09-07: Completed Phase 2 (P2-S1 through P2-S5). Elaborated Phase 2 steps. Implemented explicit ICS contract in getInviteExpiration requiring UTC Z or date-only values, returning null for named TZID or floating date-times without Z to fail safe rather than silently misinterpreting them as UTC. Refactored deleteOldInvites and dryRunDeleteOldInvites to inspect all messages and attachments in a thread, safely preserving threads with updated future invites or unparseable/unsupported attachments, and using processSync for mutation-safe pagination. Deduplicated and modernized tests/delete-old-invites.test.ts, tests/delete-old-invites-integration.test.ts, and tests/delete-old-invites-dry-run.test.ts to import production functions directly. Fixed infinite loop in test search mock. Validated with npm test (47 passing), npm run lint, and npm run build. Phase 2 reached validated commit boundary.
+- 2026-09-08: Completed Phase 3 (P3-S1 through P3-S3). Elaborated Phase 3 steps. Added comprehensive unit tests in tests/trigger-management.test.ts verifying initial trigger installation, idempotent replacement without duplicate accumulation, preservation of unrelated handlers, multiple duplicate cleanup, weekly/daily/dry-run schedule helper consistency, and ScriptApp error propagation with logging. Updated src/_t/triggerFactory.ts with removeExistingTriggers to delete pre-existing triggers for the same handler before creating the replacement trigger, logged trigger removals and creations, logged and rethrown creation errors, and aligned weeklyTrigger return value. Validated with npm test (54 passing), npm run lint, and npm run build. Phase 3 reached validated commit boundary.
