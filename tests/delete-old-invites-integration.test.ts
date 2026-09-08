@@ -67,6 +67,22 @@ SUMMARY:Named TZ Conference
 END:VEVENT
 END:VCALENDAR`;
 
+const originalGmailApp = (globalThis as any).GmailApp;
+const originalLogger = (globalThis as any).Logger;
+
+test.afterEach(() => {
+	if (originalGmailApp !== undefined) {
+		(globalThis as any).GmailApp = originalGmailApp;
+	} else {
+		delete (globalThis as any).GmailApp;
+	}
+	if (originalLogger !== undefined) {
+		(globalThis as any).Logger = originalLogger;
+	} else {
+		delete (globalThis as any).Logger;
+	}
+});
+
 test('deleteOldInvites trashes expired thread and skips future or malformed invite threads', () => {
 	const trashedThreads: string[] = [];
 	const labeledThreads: { label: string; ids: string[] }[] = [];

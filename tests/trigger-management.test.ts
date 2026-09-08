@@ -43,6 +43,22 @@ const createMockTrigger = (
 	getUniqueId: () => id,
 });
 
+const originalScriptApp = (globalThis as any).ScriptApp;
+const originalLogger = (globalThis as any).Logger;
+
+test.afterEach(() => {
+	if (originalScriptApp !== undefined) {
+		(globalThis as any).ScriptApp = originalScriptApp;
+	} else {
+		delete (globalThis as any).ScriptApp;
+	}
+	if (originalLogger !== undefined) {
+		(globalThis as any).Logger = originalLogger;
+	} else {
+		delete (globalThis as any).Logger;
+	}
+});
+
 const setupMockScriptApp = (initialTriggers: MockTrigger[] = []) => {
 	let idCounter = 1;
 	const triggers: MockTrigger[] = [...initialTriggers];

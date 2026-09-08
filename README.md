@@ -291,10 +291,33 @@ If you are working on Drive rules, look under `src/Drive/*` and `src/_s/Drive/*`
 
 ---
 
+## Testing and local verification
+
+Run the unified test suite:
+
+```bash
+npm test
+```
+
+This runs all tests in `tests/` and `src/` using Node's native test runner with `tsx`. Tests cover:
+
+- Query syntax generation and date formatting (`GmailQuery`, `DriveQuery`)
+- Mutation-safe query execution and pagination over shrinking result sets
+- Calendar invite expiration parsing (UTC `Z`, date-only values, explicit rejection of unhandled local time zones)
+- Idempotent scheduled trigger management and error logging
+- Babel build transforms, entry-point uniqueness, and output artifacts
+
+### Testing boundary
+
+Local tests execute under Node.js using isolated mocks for Apps Script globals (`GmailApp`, `ScriptApp`, `Logger`). **Local tests do not prove execution inside the live Google Apps Script environment.** Live GAS execution, trigger scheduling, OAuth quota enforcement, and manifest authorization must still be verified in Apps Script after deployment.
+
+---
+
 ## Useful commands
 
 ```bash
 npm install
+npm test
 npm run build
 npm run format
 npm run lint

@@ -9,18 +9,36 @@ import { deleteOldUpdates } from '../src/_s/Gmail/delete-old-updates';
 import { deleteBotSmsEmails } from '../src/_s/Gmail/delete-bot-sms';
 
 const globalWithGmail = globalThis as typeof globalThis & {
-	GmailApp: {
-		search: (
-			query: string,
-			start?: number,
-			max?: number
-		) => GoogleAppsScript.Gmail.GmailThread[];
-	};
+	GmailApp: any;
+	Logger: any;
 };
 
-globalWithGmail.GmailApp = {
+const defaultGmailApp = {
 	search: (_query: string, _start = 0, _max = 100) => [],
 };
+const defaultLogger = {
+	log: () => {},
+};
+const originalGmailApp = globalWithGmail.GmailApp;
+const originalLogger = globalWithGmail.Logger;
+
+test.beforeEach(() => {
+	globalWithGmail.GmailApp = { ...defaultGmailApp };
+	globalWithGmail.Logger = { ...defaultLogger };
+});
+
+test.afterEach(() => {
+	if (originalGmailApp !== undefined) {
+		globalWithGmail.GmailApp = originalGmailApp;
+	} else {
+		delete (globalWithGmail as any).GmailApp;
+	}
+	if (originalLogger !== undefined) {
+		globalWithGmail.Logger = originalLogger;
+	} else {
+		delete (globalWithGmail as any).Logger;
+	}
+});
 
 test('GmailQuery date helpers emit the Gmail date operator with correct month/day formatting', () => {
 	const afterQuery = new GmailQuery('subject:test').after(
@@ -301,11 +319,9 @@ test('deleteOldUnread processes all matching threads without pagination skips an
 
 	globalWithGmail.GmailApp = {
 		search: (_query: string, start = 0, max = 100) => {
-			return liveIds
-				.slice(start, start + max)
-				.map((id) => ({
-					id,
-				})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+			return liveIds.slice(start, start + max).map((id) => ({
+				id,
+			})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
 		},
 		createLabel: (name: string) => ({
 			getName: () => name,
@@ -357,11 +373,9 @@ test('deleteOldPromos processes all matching promo threads across multiple pages
 
 	globalWithGmail.GmailApp = {
 		search: (_query: string, start = 0, max = 100) => {
-			return liveIds
-				.slice(start, start + max)
-				.map((id) => ({
-					id,
-				})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+			return liveIds.slice(start, start + max).map((id) => ({
+				id,
+			})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
 		},
 		createLabel: (name: string) => ({
 			getName: () => name,
@@ -396,11 +410,9 @@ test('deleteOldUpdates processes all matching update threads across multiple pag
 
 	globalWithGmail.GmailApp = {
 		search: (_query: string, start = 0, max = 100) => {
-			return liveIds
-				.slice(start, start + max)
-				.map((id) => ({
-					id,
-				})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
+			return liveIds.slice(start, start + max).map((id) => ({
+				id,
+			})) as unknown as GoogleAppsScript.Gmail.GmailThread[];
 		},
 		createLabel: (name: string) => ({
 			getName: () => name,

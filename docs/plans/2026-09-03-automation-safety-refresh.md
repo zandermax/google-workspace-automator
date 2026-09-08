@@ -26,9 +26,9 @@
 
 ## Current State
 
-- Current phase: Phase 3 - Idempotent Trigger Management (Completed, awaiting commit boundary handoff)
-- Current step: Phase 3 Checkpoint - commit and push boundary
-- Next action: User inspects, commits, and pushes Phase 3 changes before elaborating and starting Phase 4.
+- Current phase: Phase 4 - Test Suite Contract And Coverage (Completed, awaiting commit boundary handoff)
+- Current step: Phase 4 Checkpoint - commit and push boundary
+- Next action: User inspects, commits, and pushes Phase 4 changes before elaborating and starting Phase 5.
 - Blockers: none
 
 ## Decisions
@@ -188,7 +188,10 @@ A single documented test command and a focused suite that exercises production s
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [ ] **P4-S1 - Unify test command in `package.json`.** Update `npm test` script to discover all test files across `tests/**/*.test.ts` and `src/**/*.test.ts` via Node test runner with `tsx`, ensuring tests like `src/Gmail/sorter.test.ts` are not silently omitted.
+- [ ] **P4-S2 - Isolate global stubs across test suites.** Add setup and teardown hooks (`beforeEach`/`afterEach`) in test suites that mock globals (`tests/gmail-query-safety.test.ts`, `tests/delete-old-invites-integration.test.ts`, and `tests/trigger-management.test.ts`) so that `GmailApp`, `ScriptApp`, and `Logger` mocks are restored and do not leak across tests.
+- [ ] **P4-S3 - Document test command and GAS runtime boundary.** Add clear testing documentation in `README.md` explaining how to run local tests, what is verified locally (pure logic, query builders, mock integration, trigger idempotence, build transforms), and the boundary: local tests run on Node.js using mocks and do not prove runtime execution inside Google Apps Script.
+- [ ] **P4-S4 - Validate Phase 4 and prepare checkpoint.** Run `npm test`, `npm run lint`, and `npm run build`. Confirm all 58 tests pass offline without credentials or network calls, and pause at the commit boundary for user review.
 
 ### Validation
 
