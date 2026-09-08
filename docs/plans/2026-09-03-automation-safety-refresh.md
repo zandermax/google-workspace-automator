@@ -26,9 +26,9 @@
 
 ## Current State
 
-- Current phase: Phase 1 - Gmail Query And Mutation Safety (Completed, awaiting commit boundary handoff)
-- Current step: Phase 1 Checkpoint - commit and push boundary
-- Next action: User inspects, commits, and pushes Phase 1 changes before elaborating and starting Phase 2.
+- Current phase: Phase 2 - Calendar Invite Expiration Correctness (Completed, awaiting commit boundary handoff)
+- Current step: Phase 2 Checkpoint - commit and push boundary
+- Next action: User inspects, commits, and pushes Phase 2 changes before elaborating and starting Phase 3.
 - Blockers: none
 
 ## Decisions
@@ -111,7 +111,11 @@ A documented and tested ICS expiration contract used by both real and dry-run in
 
 ### Steps
 
-_Not yet elaborated. In autopilot mode, elaborate immediately before this phase begins._
+- [x] **P2-S1 - Establish explicit ICS expiration contract tests.** Define tests for supported forms (UTC `Z`, date-only `VALUE=DATE:YYYYMMDD` and `YYYYMMDD`, folded properties) and explicit rejection of unsupported forms (named local `TZID` without silent UTC misinterpretation, malformed or missing DTEND). Ensure tests import `getInviteExpiration` directly.
+- [x] **P2-S2 - Implement safe ICS parsing.** Update `getInviteExpiration` in `src/_s/Gmail/delete-old-invites.ts` to require UTC `Z` for date-times, correctly parse date-only values, and return `null` for named `TZID` or ambiguous local date-times so they fail safe and are never silently treated as UTC.
+- [x] **P2-S3 - Implement thread-level inspection and updated-invite safety.** Refactor `deleteOldInvites` and `dryRunDeleteOldInvites` to scan all messages in a thread, identify all `.ics` attachments, and evaluate thread eligibility: trash if and only if at least one valid `.ics` exists, all `.ics` invites in the thread are expired, and none are unparseable/future. Ensure single labeling/trashing per thread via `markThreadForProcessing` and use `processSync` for safe batch pagination.
+- [x] **P2-S4 - Update and deduplicate invite test suites.** Replace stale duplicated logic in `tests/delete-old-invites.test.ts` and `tests/delete-old-invites-integration.test.ts` with tests exercising the real `getInviteExpiration`, `deleteOldInvites`, and `dryRunDeleteOldInvites`. Include tests for threads with updated invites across multiple messages, multiple attachments, and mutation-free dry-run verification.
+- [x] **P2-S5 - Validate Phase 2 and prepare checkpoint.** Run all invite tests, full `npm test`, `npm run lint`, and `npm run build`. Confirm entry-point signatures are intact and pause at the commit boundary for user review.
 
 ### Validation
 
@@ -280,3 +284,4 @@ Automated go/no-go gate: manifest validation, build, lint, and tests pass. Stop 
 - 2026-09-07: Completed P1-S1. Added comprehensive regression tests in tests/gmail-query-safety.test.ts covering after()/before() query construction (single/double digit month and days, leap years, year boundaries, chaining), stable pagination over 100 results, shrinking result sets from caller mutation (for both processSync and Symbol.iterator), custom start/max pagination options, and asserting exact search-call arguments.
 - 2026-09-07: Completed P1-S2. Confirmed and refined date query construction in GmailQuery.after() and GmailQuery.before() using one-based month and calendar day-of-month, cleaned up JSDoc signatures, and verified against date test cases. All tests pass and build succeeds.
 - 2026-09-07: Completed P1-S3, P1-S4, and P1-S5. Removed broken GmailQuery[Symbol.iterator] override so GmailQuery inherits Query's page prefetching, made Query[Symbol.iterator] callable with zero arguments (Partial<Parameters<G>>), migrated destructive cleanup callers (deleteOldUnread, deleteOldPromos, deleteOldUpdates, deleteBotSmsEmails) to processSync to eliminate offset-based mutation skips, added end-to-end caller tests in tests/gmail-query-safety.test.ts, ran npm test (40 passing), npm run lint, and npm run build. Phase 1 reached validated commit boundary.
+- 2026-09-07: Completed Phase 2 (P2-S1 through P2-S5). Elaborated Phase 2 steps. Implemented explicit ICS contract in getInviteExpiration requiring UTC Z or date-only values, returning null for named TZID or floating date-times without Z to fail safe rather than silently misinterpreting them as UTC. Refactored deleteOldInvites and dryRunDeleteOldInvites to inspect all messages and attachments in a thread, safely preserving threads with updated future invites or unparseable/unsupported attachments, and using processSync for mutation-safe pagination. Deduplicated and modernized tests/delete-old-invites.test.ts, tests/delete-old-invites-integration.test.ts, and tests/delete-old-invites-dry-run.test.ts to import production functions directly. Fixed infinite loop in test search mock. Validated with npm test (47 passing), npm run lint, and npm run build. Phase 2 reached validated commit boundary.

@@ -1,20 +1,10 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-/**
- * Test for deleteOldInvites logic
- * 
- * Since the function depends on Google Apps Script APIs (GmailApp, Logger),
- * we'll test the core logic: extracting event end date from ICS and comparing to now.
- */
+import { getInviteExpiration } from '../src/_s/Gmail/delete-old-invites';
 
 test('extracts event end date from ICS DTEND line', () => {
-  // This is the regex from the actual code
-  const icsRegex =
-    /^DTEND:([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z$/mu;
-
-  // Example ICS content with an event that ended in 2020
-  const icsContent = `BEGIN:VCALENDAR
+	const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Test//Test//EN
 BEGIN:VEVENT
@@ -26,27 +16,20 @@ DESCRIPTION:A conference that already happened
 END:VEVENT
 END:VCALENDAR`;
 
-  const dateReference = icsRegex.exec(icsContent);
-  assert.ok(dateReference, 'Should extract DTEND line');
-  assert.deepEqual(
-    [dateReference[1], dateReference[2], dateReference[3]],
-    ['2020', '05', '15'],
-    'Should extract year, month, day correctly'
-  );
+	const now = new Date();
+	const result = getInviteExpiration(icsContent, now);
 
-  const eventEnd = new Date(
-    `${dateReference[1]}-${dateReference[2]}-${dateReference[3]}T${dateReference[4]}:${dateReference[5]}:00.000Z`
-  );
-  const now = new Date();
-
-  assert.ok(eventEnd < now, 'Past event should be older than now');
+	assert.ok(result, 'Should parse valid DTEND line');
+	assert.deepEqual(
+		result?.eventEnd,
+		new Date('2020-05-15T11:00:00.000Z'),
+		'Should parse 2020-05-15T11:00:00.000Z'
+	);
+	assert.equal(result?.isExpired, true, 'Past event should be expired');
 });
 
 test('ignores ICS without DTEND line', () => {
-  const icsRegex =
-    /^DTEND:([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z$/mu;
-
-  const invalidIcsContent = `BEGIN:VCALENDAR
+	const invalidIcsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Test//Test//EN
 BEGIN:VEVENT
@@ -56,69 +39,45 @@ SUMMARY:Future Event with no end
 END:VEVENT
 END:VCALENDAR`;
 
-  const dateReference = icsRegex.exec(invalidIcsContent);
-  assert.equal(dateReference, null, 'Should not match if no DTEND present');
+	const result = getInviteExpiration(invalidIcsContent);
+	assert.equal(result, null, 'Should return null if no DTEND present');
 });
 
 test('correctly identifies future events as not eligible for deletion', () => {
-  const icsRegex =
-    /^DTEND:([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z$/mu;
+	const futureDate = new Date();
+	futureDate.setFullYear(futureDate.getFullYear() + 10);
 
-  // Event 10 years in the future
-  const futureDate = new Date();
-  futureDate.setFullYear(futureDate.getFullYear() + 10);
+	const year = futureDate.getUTCFullYear();
+	const month = String(futureDate.getUTCMonth() + 1).padStart(2, '0');
+	const day = String(futureDate.getUTCDate()).padStart(2, '0');
 
-  const year = futureDate.getUTCFullYear();
-  const month = String(futureDate.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(futureDate.getUTCDate()).padStart(2, '0');
+	const icsContent = `DTEND:${year}${month}${day}T150000Z`;
+	const now = new Date();
+	const result = getInviteExpiration(icsContent, now);
 
-  const icsContent = `DTEND:${year}${month}${day}T150000Z`;
-  const dateReference = icsRegex.exec(icsContent);
-
-  assert.ok(dateReference, 'Should match valid DTEND format');
-
-  const eventEnd = new Date(
-    `${dateReference[1]}-${dateReference[2]}-${dateReference[3]}T${dateReference[4]}:${dateReference[5]}:00.000Z`
-  );
-  const now = new Date();
-
-  assert.ok(eventEnd > now, 'Future event should be newer than now');
-  assert.ok(!(eventEnd < now), 'Future event should NOT be marked for deletion');
+	assert.ok(result, 'Should parse valid future DTEND format');
+	assert.equal(result?.isExpired, false, 'Future event should not be expired');
+	assert.ok(result!.eventEnd > now, 'Event end date should be after now');
 });
 
 test('correctly handles edge case: event ending one second ago', () => {
-  const icsRegex =
-    /^DTEND:([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z$/mu;
+	const now = new Date('2026-09-01T12:00:01.000Z');
+	const oneSecondAgo = new Date('2026-09-01T12:00:00.000Z');
 
-  const now = new Date();
-  const oneSecondAgo = new Date(now.getTime() - 1000);
+	const icsContent = 'DTEND:20260901T120000Z';
+	const result = getInviteExpiration(icsContent, now);
 
-  const year = oneSecondAgo.getUTCFullYear();
-  const month = String(oneSecondAgo.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(oneSecondAgo.getUTCDate()).padStart(2, '0');
-  const hours = String(oneSecondAgo.getUTCHours()).padStart(2, '0');
-  const minutes = String(oneSecondAgo.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(oneSecondAgo.getUTCSeconds()).padStart(2, '0');
-
-  const icsContent = `DTEND:${year}${month}${day}T${hours}${minutes}${seconds}Z`;
-  const dateReference = icsRegex.exec(icsContent);
-
-  assert.ok(dateReference, 'Should match time from one second ago');
-
-  const eventEnd = new Date(
-    `${dateReference[1]}-${dateReference[2]}-${dateReference[3]}T${dateReference[4]}:${dateReference[5]}:00.000Z`
-  );
-
-  // Event that ended 1 second ago should be marked for deletion
-  assert.ok(eventEnd < now, 'Event ending 1 second ago should be marked for deletion');
+	assert.ok(result, 'Should parse valid DTEND');
+	assert.deepEqual(result?.eventEnd, oneSecondAgo);
+	assert.equal(
+		result?.isExpired,
+		true,
+		'Event ending 1 second ago should be expired'
+	);
 });
 
 test('parses a realistic calendar invite ICS file', () => {
-  const icsRegex =
-    /^DTEND:([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z$/mu;
-
-  // Real-world example: a past conference
-  const icsContent = `BEGIN:VCALENDAR
+	const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Google Inc//Google Calendar 70.9054//EN
 CALSCALE:GREGORIAN
@@ -140,18 +99,35 @@ TRANSP:OPAQUE
 END:VEVENT
 END:VCALENDAR`;
 
-  const dateReference = icsRegex.exec(icsContent);
-  assert.ok(dateReference, 'Should extract DTEND from real calendar file');
-  assert.deepEqual(
-    [dateReference[1], dateReference[2], dateReference[3]],
-    ['2018', '09', '11'],
-    'Should correctly parse 2018-09-11'
-  );
+	const now = new Date('2026-09-01T12:00:00.000Z');
+	const result = getInviteExpiration(icsContent, now);
 
-  const eventEnd = new Date(
-    `${dateReference[1]}-${dateReference[2]}-${dateReference[3]}T${dateReference[4]}:${dateReference[5]}:00.000Z`
-  );
-  const now = new Date();
+	assert.ok(result, 'Should extract DTEND from real calendar file');
+	assert.deepEqual(result?.eventEnd, new Date('2018-09-11T17:00:00.000Z'));
+	assert.equal(result?.isExpired, true, '2018 event should be in the past');
+});
 
-  assert.ok(eventEnd < now, '2018 event should be in the past');
+test('rejects named local TZID values rather than silently misinterpreting as UTC', () => {
+	const now = new Date('2026-09-01T12:00:00.000Z');
+	const result = getInviteExpiration(
+		'DTEND;TZID=America/New_York:20260831T120000',
+		now
+	);
+
+	assert.equal(result, null, 'Named TZID without Z must return null');
+});
+
+test('parses date-only DTEND events end-exclusively at UTC midnight', () => {
+	const now = new Date('2026-09-01T12:00:00.000Z');
+	const pastDate = getInviteExpiration('DTEND;VALUE=DATE:20260831', now);
+	const futureDate = getInviteExpiration('DTEND:20260905', now);
+
+	assert.deepEqual(pastDate, {
+		eventEnd: new Date('2026-08-31T00:00:00.000Z'),
+		isExpired: true,
+	});
+	assert.deepEqual(futureDate, {
+		eventEnd: new Date('2026-09-05T00:00:00.000Z'),
+		isExpired: false,
+	});
 });
