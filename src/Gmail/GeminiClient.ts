@@ -176,12 +176,64 @@ const isUnavailableStatus = (
 	return (
 		statusCode === 503 ||
 		statusCode === 429 ||
+		statusCode === 404 ||
 		statusCode === 500 ||
 		statusCode === 502 ||
 		statusCode === 504 ||
 		(statusCode >= 500 && statusCode < 600) ||
-		/UNAVAILABLE|high demand/i.test(responseText)
+		/UNAVAILABLE|high demand|not found|NOT_FOUND/i.test(responseText)
 	);
+};
+
+export const CLASSIFICATION_RESPONSE_SCHEMA = {
+	type: 'ARRAY',
+	items: {
+		type: 'OBJECT',
+		properties: {
+			id: { type: 'STRING' },
+			category: {
+				type: 'STRING',
+				enum: [
+					'triage/personal',
+					'triage/finance',
+					'triage/govt',
+					'triage/receipts',
+					'triage/newsletters',
+					'triage/alerts',
+					'triage/junk',
+					'triage/unknown',
+				],
+			},
+			timeSensitive: { type: 'BOOLEAN' },
+			actionRequired: { type: 'BOOLEAN' },
+			summary: { type: 'STRING' },
+			highlights: {
+				type: 'ARRAY',
+				items: { type: 'STRING' },
+			},
+			keyDetail: { type: 'STRING' },
+		},
+		required: [
+			'id',
+			'category',
+			'timeSensitive',
+			'actionRequired',
+			'summary',
+			'highlights',
+			'keyDetail',
+		],
+	},
+} as const;
+
+export const normalizeCategory = (category: string): string => {
+	const trimmed = category.trim();
+	if (
+		TRIAGE_CATEGORIES.includes(trimmed as (typeof TRIAGE_CATEGORIES)[number])
+	) {
+		return trimmed;
+	}
+
+	return 'triage/unknown';
 };
 
 export const SYSTEM_INSTRUCTION = `You are an expert email triage classifier for personal inbox management.
@@ -191,10 +243,29 @@ The valid categories are:
 - "triage/personal": Messages from real people the user knows (friends, family, colleagues writing personal notes).
 - "triage/finance": Invoices, banking updates, tax records, payment receipts, statement notifications.
 - "triage/govt": Official correspondence from government bodies, legal authorities, or civic institutions.
-- "triage/receipts": Order confirmations and commercial purchase receipts for physical or digital goods.
+- "triage/receipts": Order confirmations and commercial purchase receipts for physical or digital goods, flight tickets, hotel reservations, travel bookings.
 - "triage/newsletters": Subscriptions, content digests, marketing newsletters, and periodic publications.
-- "triage/alerts": Automated system alerts, monitoring notifications, verification codes, security events.
+- "triage/alerts": Automated system alerts, monitoring notifications, verification codes, security events, flight delay notifications.
 - "triage/junk": Confidently disposable low-value promotions, spam, or unsolicited outreach.
+- "triage/unknown": Ambiguous, unclassifiable, or anomalous messages that do not clearly match the categories above.
+
+Examples:
+- Personal email from friend or coworker:
+  {"id": "ex-1", "category": "triage/personal", "timeSensitive": false, "actionRequired": true, "summary": "Catching up about weekend lunch plans.", "highlights": ["Lunch this Saturday"], "keyDetail": "Saturday 12pm"}
+- Monthly bank or credit card statement:
+  {"id": "ex-2", "category": "triage/finance", "timeSensitive": true, "actionRequired": true, "summary": "Monthly credit card statement balance due.", "highlights": ["$412.50 balance due"], "keyDetail": "Due Oct 15"}
+- Official vehicle registration or city tax notice:
+  {"id": "ex-3", "category": "triage/govt", "timeSensitive": true, "actionRequired": true, "summary": "City property tax assessment notice.", "highlights": ["Assessment reference 9812"], "keyDetail": "Payment due Nov 1"}
+- Flight booking confirmation, hotel reservation, or online store order:
+  {"id": "ex-4", "category": "triage/receipts", "timeSensitive": false, "actionRequired": false, "summary": "Airline flight confirmation and booking receipt.", "highlights": ["Booking ref ABC123", "Flight SFO->JFK"], "keyDetail": ""}
+- Subscribed engineering newsletter:
+  {"id": "ex-5", "category": "triage/newsletters", "timeSensitive": false, "actionRequired": false, "summary": "Weekly software development insights.", "highlights": ["TypeScript tips"], "keyDetail": ""}
+- 2FA verification code or server uptime alert:
+  {"id": "ex-6", "category": "triage/alerts", "timeSensitive": true, "actionRequired": false, "summary": "Security verification code for account login.", "highlights": ["One-time passcode"], "keyDetail": "Expires in 10 mins"}
+- Marketing discount blast from clothing retailer:
+  {"id": "ex-7", "category": "triage/junk", "timeSensitive": true, "actionRequired": false, "summary": "Promotional sale email with store discounts.", "highlights": ["30% off code"], "keyDetail": ""}
+- Cryptic or strange email with no identifiable sender context or category:
+  {"id": "ex-8", "category": "triage/unknown", "timeSensitive": false, "actionRequired": false, "summary": "Unclassifiable message with unclear context or intent.", "highlights": [], "keyDetail": ""}
 
 Fields to return for each item:
 - "id": The exact ID of the input email item.
@@ -255,16 +326,11 @@ export const validateClassificationResponse = (
 			);
 		}
 
-		if (
-			typeof category !== 'string' ||
-			!TRIAGE_CATEGORIES.includes(
-				category as (typeof TRIAGE_CATEGORIES)[number]
-			)
-		) {
-			throw new Error(
-				`Item with id "${id}" has invalid category: "${String(category)}".`
-			);
+		if (typeof category !== 'string') {
+			throw new Error(`Item with id "${id}" has non-string category field.`);
 		}
+
+		const normalizedCategory = normalizeCategory(category);
 
 		if (typeof timeSensitive !== 'boolean') {
 			throw new Error(
@@ -297,7 +363,7 @@ export const validateClassificationResponse = (
 
 		classifications.push({
 			id,
-			category: category as (typeof TRIAGE_CATEGORIES)[number],
+			category: normalizedCategory as (typeof TRIAGE_CATEGORIES)[number],
 			timeSensitive,
 			actionRequired,
 			summary,
@@ -323,7 +389,9 @@ export class GeminiClient {
 	constructor(options: GeminiClientOptions = {}) {
 		this.apiKey = resolveApiKey(options.apiKey);
 		this.primaryModel = options.model ? resolveModel(options.model) : undefined;
-		this.fallbackModels = options.fallbackModels;
+		this.fallbackModels = options.fallbackModels ?? [
+			...DEFAULT_FALLBACK_MODELS,
+		];
 		this.transport = options.transport ?? defaultTransport;
 		this.onFallback = options.onFallback;
 	}
@@ -335,27 +403,14 @@ export class GeminiClient {
 	}
 
 	getFallbackChain(): string[] {
-		if (this.fallbackModels && this.fallbackModels.length > 0) {
-			return this.primaryModel
-				? [
-						this.primaryModel,
-						...this.fallbackModels.filter((m) => m !== this.primaryModel),
-					]
-				: this.fallbackModels;
-		}
-
-		const discovered = fetchProgrammaticFallbackModels(
-			this.apiKey,
-			this.transport
-		);
-		this.fallbackModels = discovered;
+		const models =
+			this.fallbackModels && this.fallbackModels.length > 0
+				? this.fallbackModels
+				: [...DEFAULT_FALLBACK_MODELS];
 
 		return this.primaryModel
-			? [
-					this.primaryModel,
-					...discovered.filter((m) => m !== this.primaryModel),
-				]
-			: discovered;
+			? [this.primaryModel, ...models.filter((m) => m !== this.primaryModel)]
+			: models;
 	}
 
 	private logFallback(
@@ -367,8 +422,9 @@ export class GeminiClient {
 		const message = `Gemini model "${failedModel}" is unavailable (status ${statusCode}). Falling back to "${nextModel}"...`;
 		if (typeof Logger !== 'undefined') {
 			Logger.log(message);
+		} else {
+			console.warn(message);
 		}
-		console.warn(message);
 		this.onFallback?.(failedModel, nextModel, error);
 	}
 
@@ -397,6 +453,7 @@ export class GeminiClient {
 				],
 				generationConfig: {
 					response_mime_type: 'application/json',
+					response_schema: CLASSIFICATION_RESPONSE_SCHEMA,
 				},
 			};
 

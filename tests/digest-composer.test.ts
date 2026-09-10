@@ -68,7 +68,9 @@ const createMockDirective = (
 		threadId: id,
 		classification,
 		email,
-		actionType: overrides.recycleLabel ? 'apply-label-and-recycle-7d' : 'apply-label-only',
+		actionType: overrides.recycleLabel
+			? 'apply-label-and-recycle-7d'
+			: 'apply-label-only',
 		triageLabel: category,
 		recycleLabel: overrides.recycleLabel,
 		reason: 'test reason',
@@ -77,9 +79,15 @@ const createMockDirective = (
 
 test('StorageStats correctly calculates recycle size and formats units', () => {
 	const directives: TriageExecutionDirective[] = [
-		createMockDirective('1', 'triage/newsletters', { sizeKb: 1024, recycleLabel: 'Auto-Recycle/7d' }),
+		createMockDirective('1', 'triage/newsletters', {
+			sizeKb: 1024,
+			recycleLabel: 'Auto-Recycle/7d',
+		}),
 		createMockDirective('2', 'triage/personal', { sizeKb: 2048 }), // No recycle
-		createMockDirective('3', 'triage/junk', { sizeKb: 3072, recycleLabel: 'Auto-Recycle/7d' }),
+		createMockDirective('3', 'triage/junk', {
+			sizeKb: 3072,
+			recycleLabel: 'Auto-Recycle/7d',
+		}),
 	];
 
 	const recycleBytes = calculateEstimatedRecycleBytes(directives);
@@ -178,7 +186,9 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 
 	// Header checks
 	assert.ok(body.includes('📬 Daily Email Digest — 2026-09-10'));
-	assert.ok(body.includes('Processed: 3 / 50 | Action needed: 1 | Auto-recycling: 1'));
+	assert.ok(
+		body.includes('Processed: 3 / 50 | Action needed: 1 | Auto-recycling: 1')
+	);
 	assert.ok(body.includes('🗄️ Storage'));
 	assert.ok(body.includes('- Gmail/Drive used: 4 GB / 15 GB'));
 	assert.ok(body.includes('- Free space: 11 GB'));
@@ -192,16 +202,32 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 	assert.ok(body.includes('⛓️‍💥 Unsubscribe: https://example.com/unsub'));
 
 	// Categorized sections
-	assert.ok(body.includes('💳 FINANCE  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Ffinance'));
-	assert.ok(body.includes('👤 PERSONAL  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Fpersonal'));
-	assert.ok(body.includes('📰 NEWSLETTERS  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Fnewsletters'));
+	assert.ok(
+		body.includes(
+			'💳 FINANCE  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Ffinance'
+		)
+	);
+	assert.ok(
+		body.includes(
+			'👤 PERSONAL  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Fpersonal'
+		)
+	);
+	assert.ok(
+		body.includes(
+			'📰 NEWSLETTERS  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Fnewsletters'
+		)
+	);
 	assert.ok(body.includes('📷 📎'));
 	assert.ok(body.includes('⛓️‍💥 Unsubscribe ✉️: mailto:optout@news.org'));
 
 	// Recycling in 7 days section
 	assert.ok(body.includes('🕰️ RECYCLING IN 7 DAYS  (1 · 1.2 MB total)'));
 	assert.ok(body.includes('triage/newsletters'));
-	assert.ok(body.includes('[Rescue any thread before deletion by removing the Auto-Recycle/7d label in Gmail]'));
+	assert.ok(
+		body.includes(
+			'[Rescue any thread before deletion by removing the Auto-Recycle/7d label in Gmail]'
+		)
+	);
 });
 
 test('composeDigestBody displays high volume overflow banner when triggered', () => {
@@ -223,10 +249,42 @@ test('composeDigestBody displays high volume overflow banner when triggered', ()
 
 	const body = composeDigestBody(data);
 	assert.ok(body.includes('[DRY RUN] 📬 Daily Email Digest — 2026-09-10'));
-	assert.ok(body.includes('⚠️ High inbox volume: 50+ new unread emails today (limit: 50).'));
+	assert.ok(
+		body.includes(
+			'⚠️ High inbox volume: 50+ new unread emails today (limit: 50).'
+		)
+	);
 	assert.ok(body.includes('Only the first 50 were processed.'));
 	assert.ok(body.includes('https://mail.google.com/mail/u/0/#inbox'));
-	assert.ok(body.includes('All caught up! No unprocessed emails found for today.'));
+	assert.ok(
+		body.includes('All caught up! No unprocessed emails found for today.')
+	);
+});
+
+test('composeDigestBody formats triage/unknown section for unclassifiable mail', () => {
+	const dUnknown = createMockDirective('u-1', 'triage/unknown', {
+		sizeKb: 20,
+		ageInDays: 1,
+	});
+	const data: DailyDigestData = {
+		date: new Date('2026-09-10'),
+		processedCount: 1,
+		dailyLimit: 50,
+		actionRequiredCount: 0,
+		autoRecyclingCount: 0,
+		isHighVolumeOverflow: false,
+		isDryRun: false,
+		storage: {
+			gmailUsedBytes: 0,
+			gmailTotalBytes: 0,
+			estimatedRecycleBytes: 0,
+		},
+		entries: [dUnknown],
+	};
+
+	const body = composeDigestBody(data);
+	assert.ok(body.includes('UNKNOWN'));
+	assert.ok(body.includes('triage%2Funknown'));
 });
 
 test('sendDigest dispatches email with correct recipient, subject, and content', () => {

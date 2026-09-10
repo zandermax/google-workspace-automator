@@ -4,11 +4,7 @@ import {
 	type TriageExecutionDirective,
 	TRIAGE_CATEGORIES,
 } from '@/types/Gmail/triage';
-import {
-	formatBytes,
-	formatGigabytes,
-	formatMegabytes,
-} from './StorageStats';
+import { formatBytes, formatGigabytes, formatMegabytes } from './StorageStats';
 
 export const SECTION_SEPARATOR = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
@@ -53,6 +49,11 @@ export const CATEGORY_METADATA: Record<TriageCategory, CategoryMetadata> = {
 		icon: '🗑️',
 		title: 'JUNK',
 		labelKey: 'triage%2Fjunk',
+	},
+	'triage/unknown': {
+		icon: '❓',
+		title: 'UNKNOWN',
+		labelKey: 'triage%2Funknown',
 	},
 };
 
@@ -132,10 +133,7 @@ const renderEmailItem = (
 	return lines;
 };
 
-export const composeDigestSubject = (
-	date: Date,
-	isDryRun = false
-): string => {
+export const composeDigestSubject = (date: Date, isDryRun = false): string => {
 	const dateStr = formatIsoDate(date);
 	const base = `📬 Daily Email Digest — ${dateStr}`;
 	return isDryRun ? `[DRY RUN] ${base}` : base;
@@ -165,17 +163,13 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 			`- Gmail/Drive used: ${formatBytes(data.storage.gmailUsedBytes)} / ${formatGigabytes(data.storage.gmailTotalBytes)}`
 		);
 	} else {
-		lines.push(
-			`- Storage used: ${formatBytes(data.storage.gmailUsedBytes)}`
-		);
+		lines.push(`- Storage used: ${formatBytes(data.storage.gmailUsedBytes)}`);
 	}
 
 	if (data.storage.driveFreeBytes !== undefined) {
 		lines.push(`- Free space: ${formatGigabytes(data.storage.driveFreeBytes)}`);
 	}
-	lines.push(
-		`- Estimated MB queued for recycle this run: ${spaceFreedStr}`
-	);
+	lines.push(`- Estimated MB queued for recycle this run: ${spaceFreedStr}`);
 	lines.push('');
 
 	// High volume overflow warning banner
@@ -186,7 +180,9 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 		lines.push(
 			`   Only the first ${data.dailyLimit} were processed. Consider raising DAILY_LIMIT.`
 		);
-		lines.push('   Unprocessed new emails: https://mail.google.com/mail/u/0/#inbox');
+		lines.push(
+			'   Unprocessed new emails: https://mail.google.com/mail/u/0/#inbox'
+		);
 		lines.push('');
 	}
 
@@ -236,7 +232,9 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 	}
 
 	// 3. RECYCLING IN 7 DAYS Section
-	const recyclingItems = data.entries.filter((e) => e.recycleLabel !== undefined);
+	const recyclingItems = data.entries.filter(
+		(e) => e.recycleLabel !== undefined
+	);
 	if (recyclingItems.length > 0) {
 		const totalRecycleBytes = recyclingItems.reduce(
 			(acc, e) => acc + (e.email.sizeKb || 0) * 1024,

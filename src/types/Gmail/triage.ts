@@ -6,6 +6,7 @@ export const TRIAGE_CATEGORIES = [
 	'triage/newsletters',
 	'triage/alerts',
 	'triage/junk',
+	'triage/unknown',
 ] as const;
 
 export type TriageCategory = (typeof TRIAGE_CATEGORIES)[number];

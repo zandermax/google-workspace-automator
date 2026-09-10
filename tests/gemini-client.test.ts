@@ -8,6 +8,7 @@ import {
 	DEFAULT_FALLBACK_MODELS,
 	GEMINI_FALLBACK_MODELS,
 	selectFlashFallbackModels,
+	SYSTEM_INSTRUCTION,
 	type HttpTransport,
 	type HttpResponseLike,
 } from '../src/Gmail/GeminiClient';
@@ -61,6 +62,7 @@ test('GeminiClient defaults to gemini-3.8-flash and accepts custom model', () =>
 		'gemini-3.8-flash',
 		'gemini-3.7-flash',
 		'gemini-3.8-flash-lite',
+		'gemini-3.5-flash-lite',
 	]);
 	assert.deepEqual(GEMINI_FALLBACK_MODELS, DEFAULT_FALLBACK_MODELS);
 
@@ -162,6 +164,150 @@ test('GeminiClient successfully calls API and parses valid classification batch'
 		parsedBody.generationConfig?.response_mime_type,
 		'application/json'
 	);
+	assert.ok(
+		parsedBody.generationConfig?.response_schema,
+		'Generation config should provide response_schema to constrain outputs'
+	);
+	assert.deepEqual(
+		parsedBody.generationConfig?.response_schema?.items?.properties?.category
+			?.enum,
+		[
+			'triage/personal',
+			'triage/finance',
+			'triage/govt',
+			'triage/receipts',
+			'triage/newsletters',
+			'triage/alerts',
+			'triage/junk',
+			'triage/unknown',
+		]
+	);
+});
+
+test('GeminiClient normalizes unexpected categories to triage/unknown', () => {
+	const mockGeminiOutput = JSON.stringify([
+		{
+			id: 'thread-1',
+			category: 'triage/travel',
+			timeSensitive: false,
+			actionRequired: false,
+			summary: 'Flight itinerary confirmation.',
+			highlights: ['Flight UA 456'],
+			keyDetail: 'Terminal 2',
+		},
+		{
+			id: 'thread-2',
+			category: 'triage/finance',
+			timeSensitive: true,
+			actionRequired: true,
+			summary: 'Electric utility bill statement.',
+			highlights: ['Balance $84.20'],
+			keyDetail: 'Due 2026-09-20',
+		},
+	]);
+
+	const mockApiResponse = JSON.stringify({
+		candidates: [{ content: { parts: [{ text: mockGeminiOutput }] } }],
+	});
+
+	const client = new GeminiClient({
+		apiKey: 'secret-key-123',
+		transport: createMockTransport(200, mockApiResponse),
+	});
+
+	const results = client.classifyBatch(mockInputs);
+	assert.equal(results.length, 2);
+	assert.equal(results[0].category, 'triage/unknown');
+});
+
+test('SYSTEM_INSTRUCTION includes structured few-shot examples for categories', () => {
+	// @ts-expect-error - will check SYSTEM_INSTRUCTION
+	assert.ok(SYSTEM_INSTRUCTION.includes('Examples:'));
+	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/personal"'));
+	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/receipts"'));
+	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/unknown"'));
+});
+
+test('GeminiClient falls back if model returns 404 Not Found', () => {
+	const calls: string[] = [];
+	const loggedFallbacks: Array<{ failedModel: string; nextModel: string }> = [];
+
+	const validResponse = JSON.stringify({
+		candidates: [
+			{
+				content: {
+					parts: [
+						{
+							text: JSON.stringify([
+								{
+									id: 'thread-1',
+									category: 'triage/personal',
+									timeSensitive: false,
+									actionRequired: true,
+									summary: 'Dinner plans with Alice tonight at 7.',
+									highlights: ['dinner at 7'],
+									keyDetail: 'Tonight at 7',
+								},
+								{
+									id: 'thread-2',
+									category: 'triage/finance',
+									timeSensitive: true,
+									actionRequired: true,
+									summary: 'Electric utility bill statement.',
+									highlights: ['Balance $84.20'],
+									keyDetail: 'Due 2026-09-20',
+								},
+							]),
+						},
+					],
+				},
+			},
+		],
+	});
+
+	const client = new GeminiClient({
+		apiKey: 'test-key',
+		fallbackModels: ['gemini-3.8-flash-lite', 'gemini-3.5-flash-lite'],
+		onFallback: (failedModel, nextModel) => {
+			loggedFallbacks.push({ failedModel, nextModel });
+		},
+		transport: {
+			fetch(url: string) {
+				calls.push(url);
+				if (url.includes('models/gemini-3.8-flash-lite:generateContent')) {
+					return {
+						getResponseCode: () => 404,
+						getContentText: () =>
+							JSON.stringify({
+								error: {
+									code: 404,
+									message:
+										'models/gemini-3.8-flash-lite is not found for API version v1beta',
+									status: 'NOT_FOUND',
+								},
+							}),
+					};
+				}
+				if (url.includes('models/gemini-3.5-flash-lite:generateContent')) {
+					return {
+						getResponseCode: () => 200,
+						getContentText: () => validResponse,
+					};
+				}
+				throw new Error(`Unexpected URL called: ${url}`);
+			},
+		},
+	});
+
+	const results = client.classifyBatch(mockInputs);
+	assert.equal(results.length, 2);
+	assert.equal(calls.length, 2);
+	assert.deepEqual(loggedFallbacks, [
+		{
+			failedModel: 'gemini-3.8-flash-lite',
+			nextModel: 'gemini-3.5-flash-lite',
+		},
+	]);
 });
 
 test('GeminiClient throws if HTTP response status is not 2xx', () => {
@@ -492,14 +638,14 @@ test('validateClassificationResponse validates well-formed JSON array and catche
 		/invalid or unexpected id/iu
 	);
 
-	// Invalid category
+	// Non-string category
 	assert.throws(
 		() =>
 			validateClassificationResponse(
 				JSON.stringify([
 					{
 						id: 'thread-1',
-						category: 'triage/unknown-category',
+						category: 123,
 						timeSensitive: false,
 						actionRequired: false,
 						summary: 'test',
@@ -509,8 +655,25 @@ test('validateClassificationResponse validates well-formed JSON array and catche
 				]),
 				mockInputs
 			),
-		/invalid category/iu
+		/non-string category/iu
 	);
+
+	// Unexpected category string normalizes to triage/unknown
+	const normalizedUnknown = validateClassificationResponse(
+		JSON.stringify([
+			{
+				id: 'thread-1',
+				category: 'triage/unknown-category',
+				timeSensitive: false,
+				actionRequired: false,
+				summary: 'test',
+				highlights: [],
+				keyDetail: '',
+			},
+		]),
+		mockInputs
+	);
+	assert.equal(normalizedUnknown[0].category, 'triage/unknown');
 
 	// Non-boolean timeSensitive
 	assert.throws(

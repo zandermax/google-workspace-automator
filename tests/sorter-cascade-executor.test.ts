@@ -65,8 +65,16 @@ test('selectCascadeThreads prioritizes unread inbox and detects overflow', () =>
 
 test('selectCascadeThreads cascades to old inbox and archived pools when slots remain', () => {
 	const unreadPool = [createMockThread('u1'), createMockThread('u2')];
-	const oldInboxPool = [createMockThread('o1'), createMockThread('o2'), createMockThread('o3')];
-	const archivedPool = [createMockThread('a1'), createMockThread('a2'), createMockThread('a3')];
+	const oldInboxPool = [
+		createMockThread('o1'),
+		createMockThread('o2'),
+		createMockThread('o3'),
+	];
+	const archivedPool = [
+		createMockThread('a1'),
+		createMockThread('a2'),
+		createMockThread('a3'),
+	];
 
 	const queriesCalled: string[] = [];
 	const result = selectCascadeThreads({
@@ -101,7 +109,10 @@ test('selectCascadeThreads cascades to old inbox and archived pools when slots r
 
 test('selectCascadeThreads avoids duplicate thread IDs across pools', () => {
 	const unreadPool = [createMockThread('duplicate-1')];
-	const oldInboxPool = [createMockThread('duplicate-1'), createMockThread('o1')];
+	const oldInboxPool = [
+		createMockThread('duplicate-1'),
+		createMockThread('o1'),
+	];
 
 	const result = selectCascadeThreads({
 		limit: 5,
@@ -210,6 +221,37 @@ test('determineTriageDirective routes retain categories to apply-label-only', ()
 	assert.equal(directive.recycleLabel, undefined);
 });
 
+test('determineTriageDirective routes triage/unknown to apply-label-only for manual review', () => {
+	const email: ExtractedEmailSnippet = {
+		id: 't-unknown',
+		sender: 'stranger@odd.xyz',
+		senderDomain: 'odd.xyz',
+		subject: 'Unusual query',
+		snippet: 'Something completely unclassifiable',
+		hasAttachment: false,
+		attachmentTypes: [],
+		attachmentIcons: [],
+		ageInDays: 3,
+		sizeKb: 4,
+		date: new Date(),
+	};
+
+	const classification: TriageClassification = {
+		id: 't-unknown',
+		category: 'triage/unknown',
+		timeSensitive: false,
+		actionRequired: false,
+		summary: 'Unclassifiable query message.',
+		highlights: [],
+		keyDetail: '',
+	};
+
+	const directive = determineTriageDirective(email, classification, 7);
+	assert.equal(directive.actionType, 'apply-label-only');
+	assert.equal(directive.triageLabel, 'triage/unknown');
+	assert.equal(directive.recycleLabel, undefined);
+});
+
 test('determineTriageDirectives matches emails with classifications in batch', () => {
 	const email1: ExtractedEmailSnippet = {
 		id: 't-1',
@@ -249,7 +291,10 @@ test('determineTriageDirectives matches emails with classifications in batch', (
 		keyDetail: '',
 	};
 
-	const directives = determineTriageDirectives([email1, email2], [class2, class1]);
+	const directives = determineTriageDirectives(
+		[email1, email2],
+		[class2, class1]
+	);
 	assert.equal(directives.length, 2);
 	assert.equal(directives[0].threadId, 't-1');
 	assert.equal(directives[0].triageLabel, 'triage/finance');
@@ -334,7 +379,15 @@ test('executeTriageActions live mode applies labels, marks processed, and respec
 	const directives = [
 		{
 			threadId: 'th-1',
-			classification: { id: 'th-1', category: 'triage/personal', timeSensitive: false, actionRequired: false, summary: '', highlights: [], keyDetail: '' } as TriageClassification,
+			classification: {
+				id: 'th-1',
+				category: 'triage/personal',
+				timeSensitive: false,
+				actionRequired: false,
+				summary: '',
+				highlights: [],
+				keyDetail: '',
+			} as TriageClassification,
 			email: { id: 'th-1' } as ExtractedEmailSnippet,
 			actionType: 'apply-label-only' as const,
 			triageLabel: 'triage/personal' as const,
@@ -342,7 +395,15 @@ test('executeTriageActions live mode applies labels, marks processed, and respec
 		},
 		{
 			threadId: 'th-2',
-			classification: { id: 'th-2', category: 'triage/newsletters', timeSensitive: false, actionRequired: false, summary: '', highlights: [], keyDetail: '' } as TriageClassification,
+			classification: {
+				id: 'th-2',
+				category: 'triage/newsletters',
+				timeSensitive: false,
+				actionRequired: false,
+				summary: '',
+				highlights: [],
+				keyDetail: '',
+			} as TriageClassification,
 			email: { id: 'th-2' } as ExtractedEmailSnippet,
 			actionType: 'apply-label-and-recycle-7d' as const,
 			triageLabel: 'triage/newsletters' as const,
@@ -351,7 +412,15 @@ test('executeTriageActions live mode applies labels, marks processed, and respec
 		},
 		{
 			threadId: 'th-3',
-			classification: { id: 'th-3', category: 'triage/junk', timeSensitive: true, actionRequired: false, summary: '', highlights: [], keyDetail: '' } as TriageClassification,
+			classification: {
+				id: 'th-3',
+				category: 'triage/junk',
+				timeSensitive: true,
+				actionRequired: false,
+				summary: '',
+				highlights: [],
+				keyDetail: '',
+			} as TriageClassification,
 			email: { id: 'th-3' } as ExtractedEmailSnippet,
 			actionType: 'recycle-7d-only' as const,
 			recycleLabel: 'Auto-Recycle/7d' as const,
