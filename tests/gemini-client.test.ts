@@ -5,6 +5,7 @@ import {
 	validateClassificationResponse,
 	buildPromptContent,
 	DEFAULT_GEMINI_MODEL,
+	selectFlashFallbackModels,
 	type HttpTransport,
 	type HttpResponseLike,
 } from '../src/Gmail/GeminiClient';
@@ -168,6 +169,256 @@ test('GeminiClient throws if HTTP response status is not 2xx', () => {
 		() => client.classifyBatch(mockInputs),
 		/Gemini API request failed with status 401/iu
 	);
+});
+
+test('selectFlashFallbackModels selects best flash, previous version flash, and latest flash-lite', () => {
+	const mockModelCatalog = [
+		{
+			name: 'models/gemini-3.8-flash',
+			supportedGenerationMethods: ['generateContent'],
+		},
+		{
+			name: 'models/gemini-3.7-flash',
+			supportedGenerationMethods: ['generateContent'],
+		},
+		{
+			name: 'models/gemini-3.6-flash',
+			supportedGenerationMethods: ['generateContent'],
+		},
+		{
+			name: 'models/gemini-3.5-flash-lite',
+			supportedGenerationMethods: ['generateContent'],
+		},
+		{
+			name: 'models/gemini-3.1-flash-lite',
+			supportedGenerationMethods: ['generateContent'],
+		},
+		{
+			name: 'models/gemini-2.5-flash',
+			supportedGenerationMethods: ['generateContent'],
+		},
+		{
+			name: 'models/gemini-3-pro-image',
+			supportedGenerationMethods: ['generateContent'],
+		},
+	];
+
+	const selected = selectFlashFallbackModels(mockModelCatalog);
+	assert.deepEqual(selected, [
+		'gemini-3.8-flash',
+		'gemini-3.7-flash',
+		'gemini-3.5-flash-lite',
+	]);
+});
+
+test('GeminiClient automatically falls back to secondary model on 503 and logs output', () => {
+	const calls: string[] = [];
+	const loggedFallbacks: Array<{ failedModel: string; nextModel: string }> = [];
+
+	const validResponse = JSON.stringify({
+		candidates: [
+			{
+				content: {
+					parts: [
+						{
+							text: JSON.stringify([
+								{
+									id: 'thread-1',
+									category: 'triage/personal',
+									timeSensitive: false,
+									actionRequired: true,
+									summary: 'Dinner plans with Alice tonight at 7.',
+									highlights: ['dinner at 7'],
+									keyDetail: 'Tonight at 7',
+								},
+								{
+									id: 'thread-2',
+									category: 'triage/finance',
+									timeSensitive: true,
+									actionRequired: true,
+									summary: 'Electric utility bill statement.',
+									highlights: ['Balance $84.20'],
+									keyDetail: 'Due 2026-09-20',
+								},
+							]),
+						},
+					],
+				},
+			},
+		],
+	});
+
+	const client = new GeminiClient({
+		apiKey: 'test-key',
+		fallbackModels: [
+			'gemini-3.8-flash',
+			'gemini-3.7-flash',
+			'gemini-3.5-flash-lite',
+		],
+		onFallback: (failedModel, nextModel) => {
+			loggedFallbacks.push({ failedModel, nextModel });
+		},
+		transport: {
+			fetch(url: string) {
+				calls.push(url);
+				if (url.includes('models/gemini-3.8-flash:generateContent')) {
+					return {
+						getResponseCode: () => 503,
+						getContentText: () =>
+							JSON.stringify({
+								error: {
+									code: 503,
+									message: 'This model is currently experiencing high demand.',
+									status: 'UNAVAILABLE',
+								},
+							}),
+					};
+				}
+				if (url.includes('models/gemini-3.7-flash:generateContent')) {
+					return {
+						getResponseCode: () => 200,
+						getContentText: () => validResponse,
+					};
+				}
+				throw new Error(`Unexpected URL called: ${url}`);
+			},
+		},
+	});
+
+	const results = client.classifyBatch(mockInputs);
+	assert.equal(results.length, 2);
+	assert.equal(calls.length, 2);
+	assert.ok(calls[0].includes('models/gemini-3.8-flash:generateContent'));
+	assert.ok(calls[1].includes('models/gemini-3.7-flash:generateContent'));
+	assert.deepEqual(loggedFallbacks, [
+		{ failedModel: 'gemini-3.8-flash', nextModel: 'gemini-3.7-flash' },
+	]);
+});
+
+test('GeminiClient falls back to tertiary flash-lite model if second model also returns 503', () => {
+	const calls: string[] = [];
+	const loggedFallbacks: Array<{ failedModel: string; nextModel: string }> = [];
+
+	const validResponse = JSON.stringify({
+		candidates: [
+			{
+				content: {
+					parts: [
+						{
+							text: JSON.stringify([
+								{
+									id: 'thread-1',
+									category: 'triage/personal',
+									timeSensitive: false,
+									actionRequired: true,
+									summary: 'Dinner plans with Alice tonight at 7.',
+									highlights: ['dinner at 7'],
+									keyDetail: 'Tonight at 7',
+								},
+								{
+									id: 'thread-2',
+									category: 'triage/finance',
+									timeSensitive: true,
+									actionRequired: true,
+									summary: 'Electric utility bill statement.',
+									highlights: ['Balance $84.20'],
+									keyDetail: 'Due 2026-09-20',
+								},
+							]),
+						},
+					],
+				},
+			},
+		],
+	});
+
+	const client = new GeminiClient({
+		apiKey: 'test-key',
+		fallbackModels: [
+			'gemini-3.8-flash',
+			'gemini-3.7-flash',
+			'gemini-3.5-flash-lite',
+		],
+		onFallback: (failedModel, nextModel) => {
+			loggedFallbacks.push({ failedModel, nextModel });
+		},
+		transport: {
+			fetch(url: string) {
+				calls.push(url);
+				if (
+					url.includes('models/gemini-3.8-flash:generateContent') ||
+					url.includes('models/gemini-3.7-flash:generateContent')
+				) {
+					return {
+						getResponseCode: () => 503,
+						getContentText: () =>
+							JSON.stringify({
+								error: {
+									code: 503,
+									message: 'This model is currently experiencing high demand.',
+									status: 'UNAVAILABLE',
+								},
+							}),
+					};
+				}
+				if (url.includes('models/gemini-3.5-flash-lite:generateContent')) {
+					return {
+						getResponseCode: () => 200,
+						getContentText: () => validResponse,
+					};
+				}
+				throw new Error(`Unexpected URL called: ${url}`);
+			},
+		},
+	});
+
+	const results = client.classifyBatch(mockInputs);
+	assert.equal(results.length, 2);
+	assert.equal(calls.length, 3);
+	assert.deepEqual(loggedFallbacks, [
+		{ failedModel: 'gemini-3.8-flash', nextModel: 'gemini-3.7-flash' },
+		{ failedModel: 'gemini-3.7-flash', nextModel: 'gemini-3.5-flash-lite' },
+	]);
+});
+
+test('GeminiClient throws if all fallback models are unavailable', () => {
+	const loggedFallbacks: Array<{ failedModel: string; nextModel: string }> = [];
+
+	const client = new GeminiClient({
+		apiKey: 'test-key',
+		fallbackModels: [
+			'gemini-3.8-flash',
+			'gemini-3.7-flash',
+			'gemini-3.5-flash-lite',
+		],
+		onFallback: (failedModel, nextModel) => {
+			loggedFallbacks.push({ failedModel, nextModel });
+		},
+		transport: {
+			fetch() {
+				return {
+					getResponseCode: () => 503,
+					getContentText: () =>
+						JSON.stringify({
+							error: {
+								code: 503,
+								message: 'This model is currently experiencing high demand.',
+								status: 'UNAVAILABLE',
+							},
+						}),
+				};
+			},
+		},
+	});
+
+	assert.throws(
+		() => client.classifyBatch(mockInputs),
+		/Gemini API request failed with status 503/iu
+	);
+	assert.deepEqual(loggedFallbacks, [
+		{ failedModel: 'gemini-3.8-flash', nextModel: 'gemini-3.7-flash' },
+		{ failedModel: 'gemini-3.7-flash', nextModel: 'gemini-3.5-flash-lite' },
+	]);
 });
 
 test('GeminiClient throws if HTTP response payload is not valid JSON', () => {

@@ -5,6 +5,11 @@ import {
 } from '@/types/Gmail/triage';
 
 export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+export const DEFAULT_FALLBACK_MODELS = [
+	'gemini-3.8-flash',
+	'gemini-3.7-flash',
+	'gemini-3.5-flash-lite',
+] as const;
 
 export interface HttpResponseLike {
 	getResponseCode(): number;
@@ -15,10 +20,21 @@ export interface HttpTransport {
 	fetch(url: string, params: Record<string, unknown>): HttpResponseLike;
 }
 
+export interface GeminiModelCatalogItem {
+	name: string;
+	supportedGenerationMethods?: string[];
+}
+
 export interface GeminiClientOptions {
 	apiKey?: string;
 	model?: string;
+	fallbackModels?: string[];
 	transport?: HttpTransport;
+	onFallback?: (
+		failedModel: string,
+		nextModel: string,
+		error?: unknown
+	) => void;
 }
 
 const defaultTransport: HttpTransport = {
@@ -52,7 +68,7 @@ const resolveApiKey = (explicitKey?: string): string => {
 	);
 };
 
-const resolveModel = (explicitModel?: string): string => {
+const resolveModel = (explicitModel?: string): string | undefined => {
 	if (explicitModel) {
 		return explicitModel;
 	}
@@ -68,7 +84,100 @@ const resolveModel = (explicitModel?: string): string => {
 		}
 	}
 
-	return DEFAULT_GEMINI_MODEL;
+	return undefined;
+};
+
+export function parseModelVersion(modelName: string): number[] {
+	const match = modelName.match(/gemini-(\d+(?:\.\d+)*)-(?:flash|flash-lite)/);
+	if (!match) return [0];
+	return match[1].split('.').map((num) => parseInt(num, 10));
+}
+
+export function compareModelVersions(a: string, b: string): number {
+	const versionA = parseModelVersion(a);
+	const versionB = parseModelVersion(b);
+	const maxLen = Math.max(versionA.length, versionB.length);
+	for (let i = 0; i < maxLen; i += 1) {
+		const numA = versionA[i] ?? 0;
+		const numB = versionB[i] ?? 0;
+		if (numA !== numB) {
+			return numB - numA; // descending order
+		}
+	}
+	return 0;
+}
+
+export function selectFlashFallbackModels(
+	models: GeminiModelCatalogItem[]
+): string[] {
+	const validModels = models
+		.filter((m) => {
+			if (!m.supportedGenerationMethods) return true;
+			return m.supportedGenerationMethods.includes('generateContent');
+		})
+		.map((m) => m.name.replace(/^models\//, ''));
+
+	// Standard flash: gemini-X.Y-flash (not lite, not image, etc.)
+	const standardFlash = validModels
+		.filter((name) => /^gemini-\d+(?:\.\d+)*-flash$/.test(name))
+		.sort(compareModelVersions);
+
+	// Flash lite: gemini-X.Y-flash-lite
+	const flashLite = validModels
+		.filter((name) => /^gemini-\d+(?:\.\d+)*-flash-lite$/.test(name))
+		.sort(compareModelVersions);
+
+	const candidates: string[] = [];
+	if (standardFlash[0]) {
+		candidates.push(standardFlash[0]);
+	}
+	if (standardFlash[1]) {
+		candidates.push(standardFlash[1]);
+	}
+	if (flashLite[0]) {
+		candidates.push(flashLite[0]);
+	}
+
+	return candidates.length > 0 ? candidates : [...DEFAULT_FALLBACK_MODELS];
+}
+
+export function fetchProgrammaticFallbackModels(
+	apiKey: string,
+	transport: HttpTransport
+): string[] {
+	try {
+		const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+		const response = transport.fetch(url, {
+			method: 'get',
+			muteHttpExceptions: true,
+		});
+		if (response.getResponseCode() === 200) {
+			const data = JSON.parse(response.getContentText()) as {
+				models?: GeminiModelCatalogItem[];
+			};
+			if (Array.isArray(data.models)) {
+				return selectFlashFallbackModels(data.models);
+			}
+		}
+	} catch {
+		// Fall back to default fallback models if listing fails
+	}
+	return [...DEFAULT_FALLBACK_MODELS];
+}
+
+const isUnavailableStatus = (
+	statusCode: number,
+	responseText: string
+): boolean => {
+	return (
+		statusCode === 503 ||
+		statusCode === 429 ||
+		statusCode === 500 ||
+		statusCode === 502 ||
+		statusCode === 504 ||
+		(statusCode >= 500 && statusCode < 600) ||
+		/UNAVAILABLE|high demand/i.test(responseText)
+	);
 };
 
 export const SYSTEM_INSTRUCTION = `You are an expert email triage classifier for personal inbox management.
@@ -144,7 +253,9 @@ export const validateClassificationResponse = (
 
 		if (
 			typeof category !== 'string' ||
-			!TRIAGE_CATEGORIES.includes(category as (typeof TRIAGE_CATEGORIES)[number])
+			!TRIAGE_CATEGORIES.includes(
+				category as (typeof TRIAGE_CATEGORIES)[number]
+			)
 		) {
 			throw new Error(
 				`Item with id "${id}" has invalid category: "${String(category)}".`
@@ -196,76 +307,144 @@ export const validateClassificationResponse = (
 
 export class GeminiClient {
 	private readonly apiKey: string;
-	private readonly model: string;
+	private readonly primaryModel?: string;
 	private readonly transport: HttpTransport;
+	private readonly onFallback?: (
+		failedModel: string,
+		nextModel: string,
+		error?: unknown
+	) => void;
+	private fallbackModels?: string[];
 
 	constructor(options: GeminiClientOptions = {}) {
 		this.apiKey = resolveApiKey(options.apiKey);
-		this.model = resolveModel(options.model);
+		this.primaryModel = options.model ? resolveModel(options.model) : undefined;
+		this.fallbackModels = options.fallbackModels;
 		this.transport = options.transport ?? defaultTransport;
+		this.onFallback = options.onFallback;
 	}
 
 	getModel(): string {
-		return this.model;
+		return (
+			this.primaryModel ?? this.getFallbackChain()[0] ?? DEFAULT_GEMINI_MODEL
+		);
 	}
 
-	classifyBatch(
-		inputs: GeminiClassificationInput[]
-	): TriageClassification[] {
+	getFallbackChain(): string[] {
+		if (this.fallbackModels && this.fallbackModels.length > 0) {
+			return this.primaryModel
+				? [
+						this.primaryModel,
+						...this.fallbackModels.filter((m) => m !== this.primaryModel),
+					]
+				: this.fallbackModels;
+		}
+
+		const discovered = fetchProgrammaticFallbackModels(
+			this.apiKey,
+			this.transport
+		);
+		this.fallbackModels = discovered;
+
+		return this.primaryModel
+			? [
+					this.primaryModel,
+					...discovered.filter((m) => m !== this.primaryModel),
+				]
+			: discovered;
+	}
+
+	private logFallback(
+		failedModel: string,
+		nextModel: string,
+		statusCode: number,
+		error: Error
+	): void {
+		const message = `Gemini model "${failedModel}" is unavailable (status ${statusCode}). Falling back to "${nextModel}"...`;
+		if (typeof Logger !== 'undefined') {
+			Logger.log(message);
+		}
+		console.warn(message);
+		this.onFallback?.(failedModel, nextModel, error);
+	}
+
+	classifyBatch(inputs: GeminiClassificationInput[]): TriageClassification[] {
 		if (inputs.length === 0) {
 			return [];
 		}
 
-		const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+		const modelsToTry = this.getFallbackChain();
+		let lastError: Error | null = null;
 
-		const requestBody = {
-			system_instruction: {
-				parts: [{ text: SYSTEM_INSTRUCTION }],
-			},
-			contents: [
-				{
-					parts: [{ text: buildPromptContent(inputs) }],
+		for (let i = 0; i < modelsToTry.length; i += 1) {
+			const model = modelsToTry[i];
+			const nextModel = modelsToTry[i + 1];
+
+			const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+
+			const requestBody = {
+				system_instruction: {
+					parts: [{ text: SYSTEM_INSTRUCTION }],
 				},
-			],
-			generationConfig: {
-				response_mime_type: 'application/json',
-			},
-		};
+				contents: [
+					{
+						parts: [{ text: buildPromptContent(inputs) }],
+					},
+				],
+				generationConfig: {
+					response_mime_type: 'application/json',
+				},
+			};
 
-		const response = this.transport.fetch(url, {
-			method: 'post',
-			contentType: 'application/json',
-			payload: JSON.stringify(requestBody),
-			muteHttpExceptions: true,
-		});
+			const response = this.transport.fetch(url, {
+				method: 'post',
+				contentType: 'application/json',
+				payload: JSON.stringify(requestBody),
+				muteHttpExceptions: true,
+			});
 
-		const statusCode = response.getResponseCode();
-		const responseText = response.getContentText();
+			const statusCode = response.getResponseCode();
+			const responseText = response.getContentText();
 
-		if (statusCode < 200 || statusCode >= 300) {
-			throw new Error(
-				`Gemini API request failed with status ${statusCode}: ${responseText}`
-			);
+			if (statusCode < 200 || statusCode >= 300) {
+				const errorMsg = `Gemini API request failed with status ${statusCode}: ${responseText}`;
+				lastError = new Error(errorMsg);
+
+				if (nextModel && isUnavailableStatus(statusCode, responseText)) {
+					this.logFallback(model, nextModel, statusCode, lastError);
+					continue;
+				}
+
+				throw lastError;
+			}
+
+			let responseJson: unknown;
+			try {
+				responseJson = JSON.parse(responseText);
+			} catch (error) {
+				throw new Error(
+					`Gemini API returned unparseable response container: ${error instanceof Error ? error.message : String(error)}`
+				);
+			}
+
+			const candidates = (
+				responseJson as {
+					candidates?: Array<{
+						content?: { parts?: Array<{ text?: string }> };
+					}>;
+				}
+			)?.candidates;
+			const text = candidates?.[0]?.content?.parts?.[0]?.text;
+
+			if (!text) {
+				throw new Error(
+					`Gemini API response contained no candidate content text: ${responseText}`
+				);
+			}
+
+			return validateClassificationResponse(text, inputs);
 		}
 
-		let responseJson: unknown;
-		try {
-			responseJson = JSON.parse(responseText);
-		} catch (error) {
-			throw new Error(
-				`Gemini API returned unparseable response container: ${error instanceof Error ? error.message : String(error)}`
-			);
-		}
-
-		const candidates = (responseJson as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> })?.candidates;
-		const text = candidates?.[0]?.content?.parts?.[0]?.text;
-
-		if (!text) {
-			throw new Error(
-				`Gemini API response contained no candidate content text: ${responseText}`
-			);
-		}
-
-		return validateClassificationResponse(text, inputs);
+		throw lastError ?? new Error('All candidate Gemini models failed.');
 	}
 }
