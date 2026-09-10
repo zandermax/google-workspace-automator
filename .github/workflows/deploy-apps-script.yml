@@ -47,7 +47,7 @@ jobs:
           cat <<'EOF' > ~/.clasprc.json
           ${{ secrets.CLASPRC_JSON }}
           EOF
-          printf '%s' '{"scriptId":"${{ secrets.SCRIPT_ID }}"}' > .clasp.json
+          printf '%s' '{"scriptId":"${{ secrets.SCRIPT_ID }}","rootDir":"./dist"}' > .clasp.json
 
       - name: Build and deploy to Apps Script
         run: npm run push

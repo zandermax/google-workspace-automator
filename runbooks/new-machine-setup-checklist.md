@@ -117,7 +117,7 @@ jobs:
         run: |
           mkdir -p ~/.config
           printf '%s' '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
-          echo '{"scriptId":"${{ secrets.SCRIPT_ID }}"}' > .clasp.json
+          echo '{"scriptId":"${{ secrets.SCRIPT_ID }}","rootDir":"./dist"}' > .clasp.json
 
       - name: Push to Apps Script
         run: npm run push

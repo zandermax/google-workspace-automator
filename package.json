@@ -44,7 +44,7 @@
 		"lint:check": "eslint --cache .",
 		"lint-staged": "lint-staged",
 		"prepare": "husky install",
-		"push": "npm run clean-build && npm run build && cd ./dist && clasp push --force",
+		"push": "npm run clean-build && npm run build && clasp push --force",
 		"pull:remote": "tsx scripts/pull-remote.ts",
 		"test": "node --import tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'"
 	},
