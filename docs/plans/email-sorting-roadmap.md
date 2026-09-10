@@ -25,9 +25,9 @@
 
 ## Current State
 
-- Current phase: Phase 1: Triage Contracts and Message Extraction Layer (Completed)
-- Current step: Phase 1 Checkpoint - commit boundary
-- Next action: User inspects uncommitted changes, commits Phase 1 work, and confirms to start Phase 2.
+- Current phase: Phase 2: Gemini Flash Client and Structured Classification (Completed)
+- Current step: Phase 2 Checkpoint - commit boundary
+- Next action: User inspects uncommitted changes, commits Phase 2 work, and confirms to start Phase 3.
 - Blockers: none
 
 ## Decisions
@@ -114,7 +114,11 @@ A lightweight `GeminiClient` utilizing `UrlFetchApp` to query Google AI Studio's
 
 ### Steps
 
-_Not yet elaborated. Populate immediately before this phase starts._
+- [x] **P2-S1 - Implement GeminiClient with transport abstraction.** Create `src/Gmail/GeminiClient.ts` with an injectable transport interface (`fetch: (url: string, options: any) => { getResponseCode(): number; getContentText(): string }`), default fallback to `UrlFetchApp`, API key retrieval from `PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY')` (or explicit options), and model selection defaulting to `gemini-3.8-flash` (overridable via `GEMINI_MODEL` script property or options).
+- [x] **P2-S2 - Build system instructions and structured prompt generator.** Implement prompt builders that encode the triage category contracts, few-shot/guidance rules (stale time-sensitivity, highlights extraction), and format `GeminiClassificationInput[]` into `contents` with `generationConfig: { response_mime_type: "application/json" }`.
+- [x] **P2-S3 - Implement response validation.** Add `validateClassificationResponse` to parse the JSON string, verify that it is an array matching the input IDs, and check that each entry contains valid `TriageCategory`, boolean flags, and string fields, throwing explicit descriptive errors on malformed payloads.
+- [x] **P2-S4 - Write comprehensive test suite.** Create `tests/gemini-client.test.ts` testing happy path classification, missing API key errors, HTTP error codes, malformed JSON, schema property validation, and unrecognized category rejection.
+- [x] **P2-S5 - Validate Phase 2.** Run `npm test`, `npm run lint:check`, and `npm run build` to confirm all unit tests pass and code compiles cleanly.
 
 ### Validation
 
@@ -269,3 +273,4 @@ feat(entrypoint): wire aiSorter entry points, trigger, and manifest permissions
 - 2026-09-08: Confirmed build and test health: 59 passing tests, clean TypeScript compilation, and Babel output.
 - 2026-09-08: Restructured `docs/plans/email-sorting-roadmap.md` into canonical executable plan with 5 domain-based phases targeting the Full Gemini Flash AI Pipeline.
 - 2026-09-08: Completed Phase 1: added triage contracts in `src/types/Gmail/triage.ts`, registered `Gmail-AI-Sorter` with `🧠` in `src/Gmail/actions/labelAsProcessed.ts`, implemented extractor in `src/Gmail/extraction.ts`, and added 12 new passing unit tests in `tests/triage-extraction.test.ts` (71 total tests pass, clean build).
+- 2026-09-10: Completed Phase 2: implemented `GeminiClient` in `src/Gmail/GeminiClient.ts` defaulting to `gemini-3.8-flash` with transport abstraction, system instruction, structured schema prompts, and strict response validation. Added 9 unit tests in `tests/gemini-client.test.ts` (80 total tests pass, clean build and lint).
