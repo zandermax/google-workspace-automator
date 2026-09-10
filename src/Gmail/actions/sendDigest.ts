@@ -1,6 +1,7 @@
 import {
 	type DailyDigestData,
 } from '@/types/Gmail/triage';
+import { escapeHtml } from '../../helpers/html';
 import {
 	composeDigestBody,
 	composeDigestSubject,
@@ -25,14 +26,6 @@ export interface SendDigestResult {
 	subject: string;
 	body: string;
 }
-
-const escapeHtml = (text: string): string =>
-	text
-		.replace(/&/gu, '&amp;')
-		.replace(/</gu, '&lt;')
-		.replace(/>/gu, '&gt;')
-		.replace(/"/gu, '&quot;')
-		.replace(/'/gu, '&#39;');
 
 const defaultEmailSender: EmailSender = {
 	sendEmail(

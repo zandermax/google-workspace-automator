@@ -4,6 +4,7 @@ import {
 	type GeminiClassificationInput,
 	ATTACHMENT_ICONS,
 } from '@/types/Gmail/triage';
+import { stripHtml } from '../helpers/html';
 
 export interface AttachmentLike {
 	getContentType(): string;
@@ -36,22 +37,7 @@ export const sanitizeSnippet = (rawBody?: string, maxLength = 300): string => {
 		return '';
 	}
 
-	const withoutStyles = rawBody
-		.replace(/<style[\s\S]*?<\/style>/giu, ' ')
-		.replace(/<script[\s\S]*?<\/script>/giu, ' ');
-
-	const withoutHtml = withoutStyles.replace(/<[^>]+>/gu, ' ');
-
-	const decoded = withoutHtml
-		.replace(/&nbsp;/giu, ' ')
-		.replace(/&amp;/giu, '&')
-		.replace(/&lt;/giu, '<')
-		.replace(/&gt;/giu, '>')
-		.replace(/&quot;/giu, '"')
-		.replace(/&#39;/giu, "'")
-		.replace(/&#039;/giu, "'");
-
-	const singleSpaced = decoded.replace(/\s+/gu, ' ').trim();
+	const singleSpaced = stripHtml(rawBody);
 
 	if (singleSpaced.length <= maxLength) {
 		return singleSpaced;
