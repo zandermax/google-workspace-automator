@@ -3,13 +3,17 @@ import {
 	type TriageClassification,
 	TRIAGE_CATEGORIES,
 } from '@/types/Gmail/triage';
+import {
+	DEFAULT_GEMINI_MODEL,
+	DEFAULT_FALLBACK_MODELS,
+	GEMINI_FALLBACK_MODELS,
+} from './constants';
 
-export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
-export const DEFAULT_FALLBACK_MODELS = [
-	'gemini-3.8-flash',
-	'gemini-3.7-flash',
-	'gemini-3.5-flash-lite',
-] as const;
+export {
+	DEFAULT_GEMINI_MODEL,
+	DEFAULT_FALLBACK_MODELS,
+	GEMINI_FALLBACK_MODELS,
+};
 
 export interface HttpResponseLike {
 	getResponseCode(): number;

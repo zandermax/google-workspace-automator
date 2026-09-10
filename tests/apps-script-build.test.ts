@@ -173,4 +173,8 @@ test('manifest enforces least privilege and excludes unused advanced services', 
 		oauthScopes.includes('https://www.googleapis.com/auth/drive.readonly'),
 		'Manifest should include drive.readonly for quota metrics'
 	);
+	assert.ok(
+		oauthScopes.includes('https://www.googleapis.com/auth/userinfo.email'),
+		'Manifest should include userinfo.email for Session.getActiveUser recipient resolution'
+	);
 });
