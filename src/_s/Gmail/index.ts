@@ -1,11 +1,13 @@
 const driveTriggerFunctions = ['deleteOldUntitledSpreadsheets'] as const;
 
 const gmailTriggerFunctions = [
+	'aiSorter',
 	'deleteBotSmsEmails',
 	'deleteOldInvites',
 	'deleteOldPromos',
 	'deleteOldUnread',
 	'deleteOldUpdates',
+	'dryRunAiSorter',
 	'dryRunSortInbox',
 	'recycle',
 ] as const;
