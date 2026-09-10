@@ -24,7 +24,7 @@ export const removeExistingTriggers = (
 
 export const createTimeBasedTrigger = (
 	triggerFunction: TriggerFunction,
-	time: { days?: number; hours?: number; minutes?: number; weeks?: number }
+	time: { days?: number; hours?: number; minutes?: number; weeks?: number; atHour?: number }
 ) => {
 	try {
 		removeExistingTriggers(triggerFunction);
@@ -34,6 +34,12 @@ export const createTimeBasedTrigger = (
 		if (time.days) trigger.everyDays(time.days);
 		if (time.hours) trigger.everyHours(time.hours);
 		if (time.minutes) trigger.everyMinutes(time.minutes);
+		if (time.atHour !== undefined) {
+			if (!time.days && !time.weeks) {
+				trigger.everyDays(1);
+			}
+			trigger.atHour(time.atHour);
+		}
 
 		const created = trigger.create();
 		Logger.log(`Created trigger for ${triggerFunction}`);
@@ -51,6 +57,11 @@ export const twiceDailyTrigger = (triggerFunction: TriggerFunction) =>
 
 export const dailyTrigger = (triggerFunction: TriggerFunction) =>
 	createTimeBasedTrigger(triggerFunction, { days: 1 });
+
+export const dailyAtHourTrigger = (
+	triggerFunction: TriggerFunction,
+	hour: number
+) => createTimeBasedTrigger(triggerFunction, { days: 1, atHour: hour });
 
 export const dryRunDailyTrigger = (triggerFunction: TriggerFunction) =>
 	createTimeBasedTrigger(triggerFunction, { days: 1 });

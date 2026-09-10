@@ -103,4 +103,22 @@ test('manifest enforces least privilege and excludes unused advanced services', 
 		0,
 		'Manifest should not enable unused advanced services'
 	);
+
+	const oauthScopes = (manifest as { oauthScopes?: string[] }).oauthScopes ?? [];
+	assert.ok(
+		oauthScopes.includes('https://www.googleapis.com/auth/script.external_request'),
+		'Manifest should include external_request for Gemini UrlFetchApp'
+	);
+	assert.ok(
+		oauthScopes.includes('https://www.googleapis.com/auth/gmail.modify'),
+		'Manifest should include gmail.modify for triage and recycle labeling'
+	);
+	assert.ok(
+		oauthScopes.includes('https://www.googleapis.com/auth/gmail.send'),
+		'Manifest should include gmail.send for daily digest delivery'
+	);
+	assert.ok(
+		oauthScopes.includes('https://www.googleapis.com/auth/drive.readonly'),
+		'Manifest should include drive.readonly for quota metrics'
+	);
 });

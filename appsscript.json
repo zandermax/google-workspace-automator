@@ -2,5 +2,12 @@
 	"dependencies": {},
 	"exceptionLogging": "STACKDRIVER",
 	"runtimeVersion": "V8",
-	"timeZone": "America/New_York"
+	"timeZone": "America/New_York",
+	"oauthScopes": [
+		"https://www.googleapis.com/auth/script.external_request",
+		"https://www.googleapis.com/auth/gmail.modify",
+		"https://www.googleapis.com/auth/gmail.send",
+		"https://www.googleapis.com/auth/drive.readonly",
+		"https://www.googleapis.com/auth/script.scriptapp"
+	]
 }

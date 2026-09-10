@@ -2,10 +2,10 @@
 
 ## Plan Metadata
 
-- Status: ready
+- Status: completed
 - Mode: interactive
 - Canonical location: docs/plans/email-sorting-roadmap.md
-- Last updated: 2026-09-08
+- Last updated: 2026-09-10
 - Goal: Implement a daily, self-contained Google Apps Script email triage pipeline using Gemini Flash (via Google AI Studio free tier) that classifies up to 50 emails/day, routes them to structured triage labels or 7-day auto-recycle, and emails a rich daily digest with clickable attachment previews and unsubscribe actions to the account owner.
 - Success criteria:
   - Bounded cascade selection fills daily slots: new unread inbox first, then random old inbox, then random archived, capped at `DAILY_LIMIT = 50`.
@@ -25,9 +25,9 @@
 
 ## Current State
 
-- Current phase: Phase 4: Storage Reporting and Daily Digest Composition (Completed)
-- Current step: Phase 4 Checkpoint - commit boundary
-- Next action: User inspects uncommitted changes, commits Phase 4 work, and confirms to start Phase 5.
+- Current phase: Phase 5: Apps Script Wiring, Trigger Setup, and End-to-End Dry Run (Completed)
+- Current step: Phase 5 Checkpoint - final commit boundary
+- Next action: User inspects uncommitted changes, commits Phase 5 work. Sorter implementation plan is complete.
 - Blockers: none
 
 ## Decisions
@@ -286,7 +286,11 @@ Top-level entry points (`aiSorter`, `dryRunAiSorter`), scheduled daily trigger c
 
 ### Steps
 
-_Not yet elaborated. Populate immediately before this phase starts._
+- [x] **P5-S1 - Implement top-level aiSorter and dryRunAiSorter entry points.** Create `src/_s/Gmail/aiSorter.ts` coordinating cascade selection -> snippet extraction -> Gemini Flash batch classification -> directive determination -> action executor -> storage metrics -> daily digest composition & email dispatch, with `aiSorter()` (live mutations) and `dryRunAiSorter()` (dry-run mode).
+- [x] **P5-S2 - Update manifest OAuth scopes.** Update `appsscript.json` to declare explicit `oauthScopes` required by the pipeline (`https://www.googleapis.com/auth/script.external_request`, `https://www.googleapis.com/auth/gmail.modify`, `https://www.googleapis.com/auth/gmail.send`, `https://www.googleapis.com/auth/drive.readonly`) ensuring least privilege and updating `tests/apps-script-build.test.ts`.
+- [x] **P5-S3 - Register triggers and trigger wrapper.** Update `src/_s/Gmail/index.ts` with `'aiSorter'` and `'dryRunAiSorter'`, add `dailyAtHourTrigger` in `src/_t/triggerFactory.ts`, and create `src/_t/Gmail/ai-sorter_trigger.ts`.
+- [x] **P5-S4 - Write end-to-end pipeline test suite.** Create `tests/ai-sorter-pipeline.test.ts` verifying the end-to-end execution of `runAiSorterPipeline` in both live and dry-run modes with mock services.
+- [x] **P5-S5 - Validate Phase 5 and project build.** Run `npm test`, `npm run lint:check`, and `npm run build` to confirm all 5 phases are complete and cleanly buildable into `dist/`.
 
 ### Validation
 
@@ -313,3 +317,4 @@ feat(entrypoint): wire aiSorter entry points, trigger, and manifest permissions
 - 2026-09-10: Completed Phase 2: implemented `GeminiClient` in `src/Gmail/GeminiClient.ts` defaulting to `gemini-3.8-flash` with transport abstraction, system instruction, structured schema prompts, and strict response validation. Added 9 unit tests in `tests/gemini-client.test.ts` (80 total tests pass, clean build and lint).
 - 2026-09-10: Completed Phase 3: implemented cascade selection in `src/Gmail/cascadeSelection.ts` (3-tier greedy cascade with overflow detection), directive decision rules in `src/Gmail/actionRules.ts` (time-sensitive staleness, 7d recycle, and triage labels), and action executor in `src/Gmail/actionExecutor.ts` (dry-run and live modes, label caching, and daily limit guards). Added 10 unit tests in `tests/sorter-cascade-executor.test.ts` (90 total tests pass, clean build and lint).
 - 2026-09-10: Completed Phase 4: implemented storage reporting in `src/Gmail/StorageStats.ts`, UTF-8 plain-text digest formatting in `src/Gmail/digestComposer.ts`, and email dispatch in `src/Gmail/actions/sendDigest.ts`. Added 6 unit tests in `tests/digest-composer.test.ts` (96 total tests pass, clean build and lint).
+- 2026-09-10: Completed Phase 5: wired top-level entry points (`aiSorter`, `dryRunAiSorter`) in `src/_s/Gmail/aiSorter.ts`, updated `appsscript.json` manifest with least-privilege OAuth scopes, added idempotent 06:00 scheduled trigger in `src/_t/Gmail/ai-sorter_trigger.ts` and `src/_t/triggerFactory.ts`, and verified end-to-end execution in `tests/ai-sorter-pipeline.test.ts` (98 total tests pass, clean build and lint). Entire email sorter implementation plan is complete.
