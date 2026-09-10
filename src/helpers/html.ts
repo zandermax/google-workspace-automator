@@ -45,10 +45,12 @@ export const decodeHtmlEntities = (text: string): string =>
 	text.replace(/&(#(?:x[0-9a-f]+|\d+)|[a-z]+);/giu, (match, entity) => {
 		if (entity.startsWith('#x') || entity.startsWith('#X')) {
 			const code = parseInt(entity.slice(2), 16);
+			if (code === 0xa0) return ' ';
 			return !isNaN(code) && code > 0 ? String.fromCodePoint(code) : match;
 		}
 		if (entity.startsWith('#')) {
 			const code = parseInt(entity.slice(1), 10);
+			if (code === 160) return ' ';
 			return !isNaN(code) && code > 0 ? String.fromCodePoint(code) : match;
 		}
 		const lower = entity.toLowerCase();
