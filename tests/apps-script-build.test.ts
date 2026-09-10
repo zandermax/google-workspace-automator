@@ -75,6 +75,55 @@ test('keeps the dry-run Apps Script entry point name unique', () => {
 	assert.doesNotMatch(sorter ?? '', /const dryRunSortInbox =/);
 });
 
+test('prevents duplicate top-level lexical declarations across all compiled Apps Script files', () => {
+	const distDir = new URL('../dist', import.meta.url).pathname;
+
+	function getCompiledFiles(dir: string): string[] {
+		const entries = readdirSync(dir, { withFileTypes: true });
+		let files: string[] = [];
+		for (const entry of entries) {
+			const fullPath = `${dir}/${entry.name}`;
+			if (entry.isDirectory()) {
+				files = files.concat(getCompiledFiles(fullPath));
+			} else if (entry.name.endsWith('.js')) {
+				files.push(fullPath);
+			}
+		}
+		return files;
+	}
+
+	const files = getCompiledFiles(distDir);
+	assert.ok(files.length > 0, 'Compiled dist output should contain JS files');
+
+	// Matches top-level lexical declarations: const, let, class
+	const declRegex = /^(?:const|let|class)\s+([a-zA-Z0-9_$]+)/gm;
+	const declarations = new Map<string, string[]>();
+
+	for (const file of files) {
+		const content = readFileSync(file, 'utf8');
+		let match: RegExpExecArray | null;
+		while ((match = declRegex.exec(content)) !== null) {
+			const identifier = match[1];
+			const occurrences = declarations.get(identifier) ?? [];
+			occurrences.push(file.replace(`${distDir}/`, ''));
+			declarations.set(identifier, occurrences);
+		}
+	}
+
+	const duplicates: string[] = [];
+	for (const [identifier, occurrences] of declarations.entries()) {
+		if (occurrences.length > 1) {
+			duplicates.push(`'${identifier}' declared in: ${occurrences.join(', ')}`);
+		}
+	}
+
+	assert.deepEqual(
+		duplicates,
+		[],
+		`Found duplicate top-level lexical declarations across Apps Script files:\n${duplicates.join('\n')}`
+	);
+});
+
 test('excludes Node test files from the Apps Script build', () => {
 	const packageJson = JSON.parse(
 		readFileSync(new URL('../package.json', import.meta.url), 'utf8')
@@ -104,9 +153,12 @@ test('manifest enforces least privilege and excludes unused advanced services', 
 		'Manifest should not enable unused advanced services'
 	);
 
-	const oauthScopes = (manifest as { oauthScopes?: string[] }).oauthScopes ?? [];
+	const oauthScopes =
+		(manifest as { oauthScopes?: string[] }).oauthScopes ?? [];
 	assert.ok(
-		oauthScopes.includes('https://www.googleapis.com/auth/script.external_request'),
+		oauthScopes.includes(
+			'https://www.googleapis.com/auth/script.external_request'
+		),
 		'Manifest should include external_request for Gemini UrlFetchApp'
 	);
 	assert.ok(

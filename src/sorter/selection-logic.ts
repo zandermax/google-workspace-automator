@@ -1,4 +1,6 @@
-export const DAILY_LIMIT = 50;
+import { DAILY_LIMIT } from '../Gmail/cascadeSelection';
+
+export { DAILY_LIMIT };
 
 interface MailItem {
 	id: string;
