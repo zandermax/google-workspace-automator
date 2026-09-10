@@ -25,9 +25,9 @@
 
 ## Current State
 
-- Current phase: Phase 2: Gemini Flash Client and Structured Classification (Completed)
-- Current step: Phase 2 Checkpoint - commit boundary
-- Next action: User inspects uncommitted changes, commits Phase 2 work, and confirms to start Phase 3.
+- Current phase: Phase 3: Fetch Cascade Selection and Action Execution Engine (Completed)
+- Current step: Phase 3 Checkpoint - commit boundary
+- Next action: User inspects uncommitted changes, commits Phase 3 work, and confirms to start Phase 4.
 - Blockers: none
 
 ## Decisions
@@ -165,7 +165,24 @@ A selection cascade that pulls up to `DAILY_LIMIT = 50` threads across unread in
 
 ### Steps
 
-_Not yet elaborated. Populate immediately before this phase starts._
+- [x] **P3-S1 - Implement cascade selection module.** Create `src/Gmail/cascadeSelection.ts` with greedy 3-tier cascade:
+  1. `in:inbox is:unread -label:"🪄✨ Magic ✨🪄"` (greedy take up to `DAILY_LIMIT = 50`).
+  2. If room remains: `in:inbox -label:"🪄✨ Magic ✨🪄"` (oversample `remaining * 5`, shuffle with Fisher-Yates, take `remaining`).
+  3. If room remains: `in:anywhere -in:inbox -in:trash -in:spam -label:"🪄✨ Magic ✨🪄"` (oversample `remaining * 5`, shuffle, take `remaining`).
+  - Supports injected search function `(query: string, start: number, max: number) => ThreadLike[]` and custom random generator for deterministic testing.
+  - Returns selected threads and detects high volume overflow (`unreadCount >= DAILY_LIMIT`).
+- [x] **P3-S2 - Implement directive decision rules.** Create `src/Gmail/actionRules.ts` with `determineTriageDirective(email, classification, staleThresholdDays = 7)`:
+  - If `timeSensitive` and `ageInDays >= 7`: `recycle-7d-only` (skip triage label, apply `Auto-Recycle/7d`).
+  - Else if category is `triage/newsletters`, `triage/alerts`, or `triage/junk`: `apply-label-and-recycle-7d` (apply triage label + `Auto-Recycle/7d`).
+  - Else (retain categories: personal, finance, govt, receipts): `apply-label-only`.
+  - Attaches reason and labels to `TriageExecutionDirective`.
+- [x] **P3-S3 - Implement action executor.** Create `src/Gmail/actionExecutor.ts`:
+  - Executes directives with label caching (`getUserLabelByName` / `createLabel`).
+  - Applies `triage/*` labels, `Auto-Recycle/7d`, and `labelProcessed('Gmail-AI-Sorter', thread)`.
+  - Supports `dryRun: true` mode (no mutations, logging only).
+  - Enforces `DAILY_LIMIT` safety guard on mutations.
+- [x] **P3-S4 - Write comprehensive test suite.** Create `tests/sorter-cascade-executor.test.ts` testing cascade priority, pool fallthrough, random sampling, overflow flag, directive decision rules (all categories, time-sensitive stale vs recent), and executor live/dry-run behavior.
+- [x] **P3-S5 - Validate Phase 3.** Run `npm test`, `npm run lint:check`, and `npm run build` to confirm all tests pass and compilation succeeds.
 
 ### Validation
 
@@ -274,3 +291,4 @@ feat(entrypoint): wire aiSorter entry points, trigger, and manifest permissions
 - 2026-09-08: Restructured `docs/plans/email-sorting-roadmap.md` into canonical executable plan with 5 domain-based phases targeting the Full Gemini Flash AI Pipeline.
 - 2026-09-08: Completed Phase 1: added triage contracts in `src/types/Gmail/triage.ts`, registered `Gmail-AI-Sorter` with `🧠` in `src/Gmail/actions/labelAsProcessed.ts`, implemented extractor in `src/Gmail/extraction.ts`, and added 12 new passing unit tests in `tests/triage-extraction.test.ts` (71 total tests pass, clean build).
 - 2026-09-10: Completed Phase 2: implemented `GeminiClient` in `src/Gmail/GeminiClient.ts` defaulting to `gemini-3.8-flash` with transport abstraction, system instruction, structured schema prompts, and strict response validation. Added 9 unit tests in `tests/gemini-client.test.ts` (80 total tests pass, clean build and lint).
+- 2026-09-10: Completed Phase 3: implemented cascade selection in `src/Gmail/cascadeSelection.ts` (3-tier greedy cascade with overflow detection), directive decision rules in `src/Gmail/actionRules.ts` (time-sensitive staleness, 7d recycle, and triage labels), and action executor in `src/Gmail/actionExecutor.ts` (dry-run and live modes, label caching, and daily limit guards). Added 10 unit tests in `tests/sorter-cascade-executor.test.ts` (90 total tests pass, clean build and lint).
