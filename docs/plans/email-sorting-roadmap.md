@@ -25,9 +25,9 @@
 
 ## Current State
 
-- Current phase: Phase 3: Fetch Cascade Selection and Action Execution Engine (Completed)
-- Current step: Phase 3 Checkpoint - commit boundary
-- Next action: User inspects uncommitted changes, commits Phase 3 work, and confirms to start Phase 4.
+- Current phase: Phase 4: Storage Reporting and Daily Digest Composition (Completed)
+- Current step: Phase 4 Checkpoint - commit boundary
+- Next action: User inspects uncommitted changes, commits Phase 4 work, and confirms to start Phase 5.
 - Blockers: none
 
 ## Decisions
@@ -226,7 +226,27 @@ A digest composer and quota reporter that compiles run statistics, storage metri
 
 ### Steps
 
-_Not yet elaborated. Populate immediately before this phase starts._
+- [x] **P4-S1 - Implement StorageStats module.** Create `src/Gmail/StorageStats.ts` with:
+  - Account storage metrics query via `DriveApp.getStorageUsed()` and `DriveApp.getStorageLimit()` with injectable fallback.
+  - Recycle queued size calculation from `TriageExecutionDirective[]` (summing `email.sizeKb` for directives having `recycleLabel`).
+  - Unit formatting utilities (`formatBytes`, `formatMegabytes`, `formatGigabytes`).
+- [x] **P4-S2 - Implement digestComposer.** Create `src/Gmail/digestComposer.ts`:
+  - Structured plain-text/UTF-8 format matching blueprint:
+    - Summary header: processed count, action needed count, auto-recycling count, storage metrics.
+    - High-volume overflow warning banner when `isHighVolumeOverflow === true`.
+    - ⚡ ACTION REQUIRED section.
+    - Categorized sections (👤 PERSONAL, 💳 FINANCE, 🏛️ GOVT, 🧾 RECEIPTS, 📰 NEWSLETTERS, 🚨 ALERTS, 🗑️ JUNK) with count and Gmail label direct link (`https://mail.google.com/mail/u/0/#label/...`).
+    - 🕰️ RECYCLING IN 7 DAYS section listing threads queued for deferred deletion.
+    - Clickable attachment icons (📷, 📄, 📅, 🎵, 🎬, 📎) and unsubscribe links (`⛓️‍💥 Unsubscribe` or `⛓️‍💥 Unsubscribe ✉️`).
+- [x] **P4-S3 - Implement sendDigest action.** Create `src/Gmail/actions/sendDigest.ts`:
+  - Subject line formatting: `📬 Daily Email Digest — YYYY-MM-DD` (prefixed with `[DRY RUN]` if `isDryRun`).
+  - Delivers email via `GmailApp.sendEmail` to active user (`Session.getActiveUser().getEmail()`), with injectable mailer function for testing.
+- [x] **P4-S4 - Write comprehensive test suite.** Create `tests/digest-composer.test.ts`:
+  - Test byte and unit formatting in `StorageStats`.
+  - Test digest composer with all sections populated, action required items, attachment icons, unsubscribe links, and overflow warning banner.
+  - Test empty run and dry-run digest rendering.
+  - Test `sendDigest` email dispatch, subject formatting, and recipient resolution.
+- [x] **P4-S5 - Validate Phase 4.** Run `npm test`, `npm run lint:check`, and `npm run build` to confirm all tests pass and code compiles cleanly.
 
 ### Validation
 
@@ -292,3 +312,4 @@ feat(entrypoint): wire aiSorter entry points, trigger, and manifest permissions
 - 2026-09-08: Completed Phase 1: added triage contracts in `src/types/Gmail/triage.ts`, registered `Gmail-AI-Sorter` with `🧠` in `src/Gmail/actions/labelAsProcessed.ts`, implemented extractor in `src/Gmail/extraction.ts`, and added 12 new passing unit tests in `tests/triage-extraction.test.ts` (71 total tests pass, clean build).
 - 2026-09-10: Completed Phase 2: implemented `GeminiClient` in `src/Gmail/GeminiClient.ts` defaulting to `gemini-3.8-flash` with transport abstraction, system instruction, structured schema prompts, and strict response validation. Added 9 unit tests in `tests/gemini-client.test.ts` (80 total tests pass, clean build and lint).
 - 2026-09-10: Completed Phase 3: implemented cascade selection in `src/Gmail/cascadeSelection.ts` (3-tier greedy cascade with overflow detection), directive decision rules in `src/Gmail/actionRules.ts` (time-sensitive staleness, 7d recycle, and triage labels), and action executor in `src/Gmail/actionExecutor.ts` (dry-run and live modes, label caching, and daily limit guards). Added 10 unit tests in `tests/sorter-cascade-executor.test.ts` (90 total tests pass, clean build and lint).
+- 2026-09-10: Completed Phase 4: implemented storage reporting in `src/Gmail/StorageStats.ts`, UTF-8 plain-text digest formatting in `src/Gmail/digestComposer.ts`, and email dispatch in `src/Gmail/actions/sendDigest.ts`. Added 6 unit tests in `tests/digest-composer.test.ts` (96 total tests pass, clean build and lint).
