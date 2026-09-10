@@ -275,10 +275,14 @@ export const sendDryRunInboxSortDigest = (
 		lines.push('No items require review.');
 	}
 
+	const bodyText = lines.join('\n');
 	GmailApp.sendEmail(
 		recipient,
 		'📬 Dry-run inbox sort summary',
-		lines.join('\n')
+		bodyText,
+		{
+			htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, monospace; white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${bodyText}</div>`,
+		}
 	);
 
 	return summary;

@@ -7,7 +7,12 @@ import {
 } from '../digestComposer';
 
 export interface EmailSender {
-	sendEmail(recipient: string, subject: string, body: string): void;
+	sendEmail(
+		recipient: string,
+		subject: string,
+		body: string,
+		options?: { htmlBody?: string }
+	): void;
 }
 
 export interface SendDigestOptions {
@@ -21,12 +26,25 @@ export interface SendDigestResult {
 	body: string;
 }
 
+const escapeHtml = (text: string): string =>
+	text
+		.replace(/&/gu, '&amp;')
+		.replace(/</gu, '&lt;')
+		.replace(/>/gu, '&gt;')
+		.replace(/"/gu, '&quot;')
+		.replace(/'/gu, '&#39;');
+
 const defaultEmailSender: EmailSender = {
-	sendEmail(recipient: string, subject: string, body: string): void {
+	sendEmail(
+		recipient: string,
+		subject: string,
+		body: string,
+		options?: { htmlBody?: string }
+	): void {
 		if (typeof GmailApp === 'undefined' || !GmailApp.sendEmail) {
 			throw new Error('GmailApp is not available in this environment.');
 		}
-		GmailApp.sendEmail(recipient, subject, body);
+		GmailApp.sendEmail(recipient, subject, body, options);
 	},
 };
 
@@ -60,7 +78,9 @@ export const sendDigest = (
 	const body = composeDigestBody(data);
 	const sender = options.emailSender ?? defaultEmailSender;
 
-	sender.sendEmail(recipient, subject, body);
+	const htmlBody = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, monospace; white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${escapeHtml(body)}</div>`;
+
+	sender.sendEmail(recipient, subject, body, { htmlBody });
 
 	if (typeof Logger !== 'undefined') {
 		Logger.log(`Sent daily email digest to ${recipient}: "${subject}"`);
