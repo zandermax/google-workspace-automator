@@ -5,6 +5,9 @@ import {
 	composeDigestBody,
 	composeDigestHtml,
 	composeDigestSubject,
+	composeBacklogOnlyDigestBody,
+	composeBacklogOnlyDigestHtml,
+	composeBacklogOnlyDigestSubject,
 } from '../digestComposer';
 
 export interface EmailSender {
@@ -41,7 +44,7 @@ const defaultEmailSender: EmailSender = {
 	},
 };
 
-const resolveRecipient = (explicitRecipient?: string): string => {
+export const resolveRecipient = (explicitRecipient?: string): string => {
 	if (explicitRecipient) {
 		return explicitRecipient;
 	}
@@ -84,4 +87,37 @@ export const sendDigest = (
 		subject,
 		body,
 	};
+};
+
+export interface SendBacklogOnlyDigestOptions extends SendDigestOptions {
+	date?: Date;
+	isDryRun?: boolean;
+}
+
+export interface SendBacklogOnlyDigestResult {
+	recipient: string;
+	subject: string;
+	body: string;
+}
+
+export const sendBacklogOnlyDigest = (
+	pendingCount: number,
+	actionsPageUrl: string,
+	options: SendBacklogOnlyDigestOptions = {}
+): SendBacklogOnlyDigestResult => {
+	const recipient = resolveRecipient(options.recipient);
+	const date = options.date ?? new Date();
+	const isDryRun = options.isDryRun ?? false;
+	const subject = composeBacklogOnlyDigestSubject(date, pendingCount, isDryRun);
+	const body = composeBacklogOnlyDigestBody(pendingCount, actionsPageUrl);
+	const htmlBody = composeBacklogOnlyDigestHtml(pendingCount, actionsPageUrl);
+	const sender = options.emailSender ?? defaultEmailSender;
+
+	sender.sendEmail(recipient, subject, body, { htmlBody });
+
+	if (typeof Logger !== 'undefined') {
+		Logger.log(`Sent backlog-only digest to ${recipient}: "${subject}"`);
+	}
+
+	return { recipient, subject, body };
 };
