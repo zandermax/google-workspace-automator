@@ -1,5 +1,6 @@
 import { labelProcessed } from './actions/labelAsProcessed';
 import { DAILY_LIMIT } from './cascadeSelection';
+import { PENDING_ACTION_LABEL } from './actionRules';
 import { type TriageExecutionDirective } from '@/types/Gmail/triage';
 
 export interface LabelLike {
@@ -143,6 +144,9 @@ export const executeTriageActions = <TThread extends ThreadLikeWithId = ThreadLi
 			label.addToThread(thread);
 			recycledCount += 1;
 		}
+
+		const pendingLabel = ensureLabel(PENDING_ACTION_LABEL);
+		pendingLabel.addToThread(thread);
 
 		mutatedThreads.push(thread);
 		processedCount += 1;

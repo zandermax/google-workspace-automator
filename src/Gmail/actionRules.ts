@@ -7,6 +7,7 @@ import {
 
 export const DEFAULT_STALE_DAYS_THRESHOLD = 7;
 export const AUTO_RECYCLE_LABEL = 'Auto-Recycle/7d' as const;
+export const PENDING_ACTION_LABEL = 'Digest/Pending-Action' as const;
 
 export const AUTO_RECYCLE_CATEGORIES: ReadonlySet<TriageCategory> = new Set([
 	'triage/newsletters',
