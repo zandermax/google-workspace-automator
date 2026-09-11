@@ -2,7 +2,13 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
 	selectCascadeThreads,
+	selectLargeCandidates,
 	fisherYatesShuffle,
+	allocateSlotBudget,
+	buildLargeMailQuery,
+	resolveSlotPercentages,
+	resolveSizeThresholds,
+	BIG_SIZE_THRESHOLDS,
 	CASCADE_QUERIES,
 	DAILY_LIMIT,
 } from '../src/Gmail/cascadeSelection';
@@ -39,29 +45,301 @@ test('fisherYatesShuffle maintains all elements and works with deterministic ran
 	assert.deepEqual(new Set(shuffled), new Set(items));
 });
 
-test('selectCascadeThreads prioritizes unread inbox and detects overflow', () => {
-	const unreadPool = Array.from({ length: 50 }, (_, i) =>
-		createMockThread(`unread-${i}`)
-	);
-	let queryExecuted: string[] = [];
+test('allocateSlotBudget splits the daily limit 60/20/20 by default', () => {
+	assert.deepEqual(allocateSlotBudget(DAILY_LIMIT), {
+		inbox: 30,
+		largeElsewhere: 10,
+		randomElsewhere: 10,
+	});
+});
 
-	const result = selectCascadeThreads({
-		limit: 50,
+test('allocateSlotBudget always sums to the limit despite rounding', () => {
+	for (const limit of [1, 3, 7, 13, 47, 50]) {
+		const budget = allocateSlotBudget(limit);
+		assert.equal(
+			budget.inbox + budget.largeElsewhere + budget.randomElsewhere,
+			limit,
+			`budget for limit ${limit} must sum to the limit`
+		);
+	}
+});
+
+test('allocateSlotBudget handles empty, saturated, and invalid percentages', () => {
+	assert.deepEqual(allocateSlotBudget(0), {
+		inbox: 0,
+		largeElsewhere: 0,
+		randomElsewhere: 0,
+	});
+
+	assert.deepEqual(allocateSlotBudget(20, { inbox: 100, largeElsewhere: 0 }), {
+		inbox: 20,
+		largeElsewhere: 0,
+		randomElsewhere: 0,
+	});
+
+	// Over-subscribed percentages are normalized, never exceeding the limit
+	const oversubscribed = allocateSlotBudget(20, {
+		inbox: 90,
+		largeElsewhere: 90,
+	});
+	assert.equal(
+		oversubscribed.inbox +
+			oversubscribed.largeElsewhere +
+			oversubscribed.randomElsewhere,
+		20
+	);
+	assert.ok(oversubscribed.randomElsewhere >= 0);
+
+	// Invalid values fall back to the defaults
+	assert.deepEqual(
+		allocateSlotBudget(50, { inbox: -5, largeElsewhere: Number.NaN }),
+		{ inbox: 30, largeElsewhere: 10, randomElsewhere: 10 }
+	);
+});
+
+test('selectLargeCandidates stops at the first threshold that fills the budget', () => {
+	const queries: string[] = [];
+	const result = selectLargeCandidates({
+		budget: 3,
 		search: (query) => {
-			queryExecuted.push(query);
-			if (query === CASCADE_QUERIES.unreadInbox) {
-				return unreadPool;
+			queries.push(query);
+			// Nothing is larger than 10M; 5M has enough
+			if (query === buildLargeMailQuery('10M')) {
+				return [];
+			}
+			if (query === buildLargeMailQuery('5M')) {
+				return [
+					createMockThread('big-1'),
+					createMockThread('big-2'),
+					createMockThread('big-3'),
+				];
 			}
 			return [];
 		},
 	});
 
+	assert.equal(result.threshold, '5M');
+	assert.equal(result.candidates.length, 3);
+	assert.deepEqual(queries, [
+		buildLargeMailQuery('10M'),
+		buildLargeMailQuery('5M'),
+	]);
+});
+
+test('selectLargeCandidates falls back to the broadest pool and stays bounded', () => {
+	const queries: string[] = [];
+	const maxRequested: number[] = [];
+
+	const result = selectLargeCandidates({
+		budget: 10,
+		search: (query, _start, max) => {
+			queries.push(query);
+			maxRequested.push(max);
+			// Never enough to fill the budget; broadest threshold wins
+			return query === buildLargeMailQuery('500K')
+				? [createMockThread('big-1'), createMockThread('big-2')]
+				: [];
+		},
+	});
+
+	assert.equal(result.threshold, '500K');
+	assert.equal(result.candidates.length, 2);
+	assert.equal(queries.length, BIG_SIZE_THRESHOLDS.length);
+	assert.ok(
+		queries.length <= 5,
+		'probe must never exceed five searches per run'
+	);
+	assert.deepEqual(new Set(maxRequested), new Set([50]));
+});
+
+test('selectLargeCandidates skips threads already selected by earlier pools', () => {
+	const result = selectLargeCandidates({
+		budget: 2,
+		seenIds: new Set(['big-1']),
+		search: (query) =>
+			query === buildLargeMailQuery('10M')
+				? [createMockThread('big-1'), createMockThread('big-2')]
+				: [],
+	});
+
+	assert.deepEqual(
+		result.candidates.map((thread) => thread.getId()),
+		['big-2']
+	);
+});
+
+test('selectLargeCandidates issues no searches when the budget is zero', () => {
+	let searchCount = 0;
+	const result = selectLargeCandidates({
+		budget: 0,
+		search: () => {
+			searchCount += 1;
+			return [];
+		},
+	});
+
+	assert.equal(searchCount, 0);
+	assert.deepEqual(result.candidates, []);
+});
+
+test('daily limit is configured as a conservative cap', () => {
+	assert.equal(DAILY_LIMIT, 50);
+});
+
+test('resolveSlotPercentages and resolveSizeThresholds read script properties safely', () => {
+	const globalWithProps = globalThis as any;
+	const original = globalWithProps.PropertiesService;
+
+	const withProperties = (properties: Record<string, string>) => {
+		globalWithProps.PropertiesService = {
+			getScriptProperties: () => ({
+				getProperty: (key: string) => properties[key] ?? null,
+			}),
+		};
+	};
+
+	try {
+		// Absent properties fall back to defaults
+		delete globalWithProps.PropertiesService;
+		assert.deepEqual(resolveSlotPercentages(), {
+			inbox: 60,
+			largeElsewhere: 20,
+		});
+		assert.deepEqual(resolveSizeThresholds(), BIG_SIZE_THRESHOLDS);
+
+		withProperties({
+			SORTER_INBOX_PERCENT: '40',
+			SORTER_LARGE_MAIL_PERCENT: '35',
+			SORTER_SIZE_THRESHOLDS: '25M, 8M ,750K',
+		});
+		assert.deepEqual(resolveSlotPercentages(), {
+			inbox: 40,
+			largeElsewhere: 35,
+		});
+		assert.deepEqual(resolveSizeThresholds(), ['25M', '8M', '750K']);
+
+		// Malformed thresholds are rejected rather than injected into a Gmail query
+		withProperties({ SORTER_SIZE_THRESHOLDS: '10M OR in:anywhere, -label:x' });
+		assert.deepEqual(resolveSizeThresholds(), BIG_SIZE_THRESHOLDS);
+
+		// Non-numeric percentages become NaN and are clamped back to defaults
+		withProperties({ SORTER_INBOX_PERCENT: 'lots' });
+		assert.deepEqual(allocateSlotBudget(50, resolveSlotPercentages()), {
+			inbox: 30,
+			largeElsewhere: 10,
+			randomElsewhere: 10,
+		});
+	} finally {
+		if (original === undefined) {
+			delete globalWithProps.PropertiesService;
+		} else {
+			globalWithProps.PropertiesService = original;
+		}
+	}
+});
+
+test('selectCascadeThreads caps unread inbox at its budget and detects overflow', () => {
+	const unreadPool = Array.from({ length: 50 }, (_, i) =>
+		createMockThread(`unread-${i}`)
+	);
+	const bigPool = Array.from({ length: 10 }, (_, i) =>
+		createMockThread(`big-${i}`)
+	);
+	const archivedPool = Array.from({ length: 10 }, (_, i) =>
+		createMockThread(`arch-${i}`)
+	);
+	const queryExecuted: string[] = [];
+
+	const result = selectCascadeThreads({
+		limit: 50,
+		search: (query, _start, max) => {
+			queryExecuted.push(query);
+			if (query === CASCADE_QUERIES.unreadInbox) {
+				return unreadPool.slice(0, max);
+			}
+			if (query === buildLargeMailQuery('10M')) {
+				return bigPool.slice(0, max);
+			}
+			if (query === CASCADE_QUERIES.archived) {
+				return archivedPool.slice(0, max);
+			}
+			return [];
+		},
+		random: () => 0.5,
+	});
+
+	// Unread mail is effectively unlimited, yet it may not starve the other pools
+	assert.equal(result.counts.unreadInbox, 30);
+	assert.equal(result.counts.largeElsewhere, 10);
+	assert.equal(result.counts.archived, 10);
+	assert.equal(result.counts.oldInbox, 0);
 	assert.equal(result.threads.length, 50);
 	assert.equal(result.isHighVolumeOverflow, true);
-	assert.equal(result.counts.unreadInbox, 50);
-	assert.equal(result.counts.oldInbox, 0);
-	assert.equal(result.counts.archived, 0);
-	assert.deepEqual(queryExecuted, [CASCADE_QUERIES.unreadInbox]);
+
+	// Inbox budget was satisfied by unread mail, so oldInbox is never queried
+	assert.ok(!queryExecuted.includes(CASCADE_QUERIES.oldInbox));
+	// The probe stops at the first threshold that fills the big budget
+	assert.deepEqual(queryExecuted, [
+		CASCADE_QUERIES.unreadInbox,
+		buildLargeMailQuery('10M'),
+		CASCADE_QUERIES.archived,
+	]);
+});
+
+test('selectCascadeThreads redirects unfilled inbox and large slots to random elsewhere', () => {
+	const archivedPool = Array.from({ length: 20 }, (_, i) =>
+		createMockThread(`arch-${i}`)
+	);
+	let archivedMaxRequested = 0;
+
+	const result = selectCascadeThreads({
+		limit: 10,
+		search: (query, _start, max) => {
+			if (query === CASCADE_QUERIES.archived) {
+				archivedMaxRequested = max;
+				return archivedPool.slice(0, max);
+			}
+			// Inbox and big pools are both empty
+			return [];
+		},
+		random: () => 0.5,
+	});
+
+	assert.equal(result.threads.length, 10);
+	assert.equal(result.counts.archived, 10);
+	assert.equal(result.counts.unreadInbox, 0);
+	assert.equal(result.counts.largeElsewhere, 0);
+	assert.equal(result.isHighVolumeOverflow, false);
+	// All 10 slots cascaded into the random-elsewhere pool, oversampled 5x
+	assert.equal(archivedMaxRequested, 50);
+});
+
+test('selectCascadeThreads honors custom percentages', () => {
+	const pools: Record<string, string> = {
+		[CASCADE_QUERIES.unreadInbox]: 'u',
+		[buildLargeMailQuery('10M')]: 'big',
+		[CASCADE_QUERIES.archived]: 'arch',
+	};
+
+	const result = selectCascadeThreads({
+		limit: 10,
+		percentages: { inbox: 20, largeElsewhere: 50 },
+		search: (query, _start, max) => {
+			const prefix = pools[query];
+			if (!prefix) {
+				return [];
+			}
+			return Array.from({ length: max }, (_, i) =>
+				createMockThread(`${prefix}-${i}`)
+			);
+		},
+		random: () => 0.5,
+	});
+
+	assert.equal(result.counts.unreadInbox, 2);
+	assert.equal(result.counts.largeElsewhere, 5);
+	assert.equal(result.counts.archived, 3);
+	assert.equal(result.threads.length, 10);
 });
 
 test('selectCascadeThreads cascades to old inbox and archived pools when slots remain', () => {
@@ -96,16 +374,23 @@ test('selectCascadeThreads cascades to old inbox and archived pools when slots r
 		random: () => 0.5,
 	});
 
+	// limit 6 -> inbox 3, large 1, random 2; the empty large budget cascades to archived
 	assert.equal(result.isHighVolumeOverflow, false);
 	assert.equal(result.threads.length, 6);
 	assert.equal(result.counts.unreadInbox, 2);
-	assert.equal(result.counts.oldInbox, 3);
-	assert.equal(result.counts.archived, 1);
+	assert.equal(result.counts.oldInbox, 1);
+	assert.equal(result.counts.largeElsewhere, 0);
+	assert.equal(result.counts.archived, 3);
 	assert.deepEqual(queriesCalled, [
 		CASCADE_QUERIES.unreadInbox,
 		CASCADE_QUERIES.oldInbox,
+		...BIG_SIZE_THRESHOLDS.map(buildLargeMailQuery),
 		CASCADE_QUERIES.archived,
 	]);
+	assert.ok(
+		queriesCalled.length <= 8,
+		'a run must never exceed eight Gmail searches'
+	);
 });
 
 test('selectCascadeThreads avoids duplicate thread IDs across pools', () => {

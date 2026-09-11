@@ -328,5 +328,7 @@ test('runAiSorterPipeline only requests remaining capacity when some backlog alr
 		emailSender: { sendEmail: () => {} },
 	});
 
-	assert.equal(requestedLimit, 3);
+	// Remaining capacity is 3, of which the inbox budget is 60% -> 1,
+	// plus one extra result used only to detect high-volume overflow.
+	assert.equal(requestedLimit, 2);
 });

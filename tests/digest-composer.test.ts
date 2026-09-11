@@ -387,12 +387,17 @@ test('composeDigestBody displays high volume overflow banner when triggered', ()
 
 	const body = composeDigestBody(data);
 	assert.ok(body.includes('[DRY RUN] 📬 Daily Email Digest — 2026-09-10'));
+	// Overflow now means unread mail exceeded its 60% inbox share, not the whole run
 	assert.ok(
 		body.includes(
-			'⚠️ High inbox volume: 50+ new unread emails today (limit: 50).'
+			"⚠️ High inbox volume: more unread mail than this run's inbox share (30 of 50 slots)."
 		)
 	);
-	assert.ok(body.includes('Only the first 50 were processed.'));
+	assert.ok(
+		body.includes(
+			'The remaining slots were reserved for older and larger mail elsewhere.'
+		)
+	);
 	assert.ok(body.includes('https://mail.google.com/mail/u/0/#inbox'));
 	assert.ok(
 		body.includes('All caught up! No unprocessed emails found for today.')

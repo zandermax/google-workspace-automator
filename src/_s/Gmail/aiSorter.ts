@@ -110,7 +110,7 @@ export const runAiSorterPipeline = (
 
 	if (typeof Logger !== 'undefined') {
 		Logger.log(
-			`Selected ${threads.length} threads (unread: ${cascadeResult.counts.unreadInbox}, old inbox: ${cascadeResult.counts.oldInbox}, archived: ${cascadeResult.counts.archived}). Overflow: ${cascadeResult.isHighVolumeOverflow}`
+			`Selected ${threads.length} threads (unread: ${cascadeResult.counts.unreadInbox}, old inbox: ${cascadeResult.counts.oldInbox}, large elsewhere: ${cascadeResult.counts.largeElsewhere}, archived: ${cascadeResult.counts.archived}). Overflow: ${cascadeResult.isHighVolumeOverflow}`
 		);
 	}
 

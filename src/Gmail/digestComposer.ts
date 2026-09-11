@@ -11,6 +11,10 @@ import {
 	formatUsagePercent,
 } from './StorageStats';
 import { escapeHtml, toHtmlNumericEntities } from '../helpers/html';
+import {
+	allocateSlotBudget,
+	resolveSlotPercentages,
+} from './cascadeSelection';
 
 const HTML_FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -257,11 +261,18 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 
 	// High volume overflow warning banner
 	if (data.isHighVolumeOverflow) {
+		const inboxBudget = allocateSlotBudget(
+			data.dailyLimit,
+			resolveSlotPercentages()
+		).inbox;
 		lines.push(
-			`⚠️ High inbox volume: ${data.processedCount}+ new unread emails today (limit: ${data.dailyLimit}).`
+			`⚠️ High inbox volume: more unread mail than this run's inbox share (${inboxBudget} of ${data.dailyLimit} slots).`
 		);
 		lines.push(
-			`   Only the first ${data.dailyLimit} were processed. Consider raising DAILY_LIMIT.`
+			'   The remaining slots were reserved for older and larger mail elsewhere.'
+		);
+		lines.push(
+			'   Raise DAILY_LIMIT or SORTER_INBOX_PERCENT to process more unread mail per run.'
 		);
 		lines.push(
 			'   Unprocessed new emails: https://mail.google.com/mail/u/0/#inbox'
@@ -484,10 +495,13 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 	${storageLines.map((line) => `<div>${escapeHtml(line)}</div>`).join('')}
 </div>`;
 
+	const overflowInboxBudget = data.isHighVolumeOverflow
+		? allocateSlotBudget(data.dailyLimit, resolveSlotPercentages()).inbox
+		: 0;
 	const overflowHtml = data.isHighVolumeOverflow
 		? `<div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#92400e;">
-	<div>⚠️ High inbox volume: ${data.processedCount}+ new unread emails today (limit: ${data.dailyLimit}).</div>
-	<div>Only the first ${data.dailyLimit} were processed. Consider raising DAILY_LIMIT.</div>
+	<div>⚠️ High inbox volume: more unread mail than this run's inbox share (${overflowInboxBudget} of ${data.dailyLimit} slots).</div>
+	<div>The remaining slots were reserved for older and larger mail elsewhere. Raise DAILY_LIMIT or SORTER_INBOX_PERCENT to process more unread mail per run.</div>
 	<div><a href="https://mail.google.com/mail/u/0/#inbox" style="color:#92400e;">View unprocessed emails</a></div>
 </div>`
 		: '';
