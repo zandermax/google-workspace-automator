@@ -16,10 +16,8 @@ export const doGet = (): GoogleAppsScript.HTML.HtmlOutput => {
 	return HtmlService.createHtmlOutput(html).setTitle('Pending Triage Actions');
 };
 
-export const handleArchiveDigestThread = (threadId: string): void => {
-	archiveDigestThread(threadId);
-};
+export const handleArchiveDigestThread = (threadId: string): boolean =>
+	archiveDigestThread(threadId).resolved;
 
-export const handleDeleteDigestThread = (threadId: string): void => {
-	deleteDigestThread(threadId);
-};
+export const handleDeleteDigestThread = (threadId: string): boolean =>
+	deleteDigestThread(threadId).resolved;

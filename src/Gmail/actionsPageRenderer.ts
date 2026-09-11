@@ -36,12 +36,26 @@ export const renderActionsPageHtml = (groups: PendingItemGroup[]): string => {
 	<script>
 		function archiveItem(threadId) {
 			google.script.run
-				.withSuccessHandler(function () { removeRow(threadId); })
+				.withSuccessHandler(function (resolved) {
+					if (resolved) {
+						removeRow(threadId);
+					} else {
+						alert('Could not resolve that thread — it may have already been moved. Refresh the page.');
+					}
+				})
+				.withFailureHandler(function (error) { alert('Action failed: ' + error.message); })
 				.handleArchiveDigestThread(threadId);
 		}
 		function deleteItem(threadId) {
 			google.script.run
-				.withSuccessHandler(function () { removeRow(threadId); })
+				.withSuccessHandler(function (resolved) {
+					if (resolved) {
+						removeRow(threadId);
+					} else {
+						alert('Could not resolve that thread — it may have already been moved. Refresh the page.');
+					}
+				})
+				.withFailureHandler(function (error) { alert('Action failed: ' + error.message); })
 				.handleDeleteDigestThread(threadId);
 		}
 		function removeRow(threadId) {

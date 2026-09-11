@@ -28,6 +28,8 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 	assert.ok(html.includes('google.script.run'));
 	assert.ok(html.includes('handleArchiveDigestThread'));
 	assert.ok(html.includes('handleDeleteDigestThread'));
+	assert.ok(html.includes('withFailureHandler'));
+	assert.ok(html.includes('if (resolved)'));
 });
 
 test('renderActionsPageHtml shows an empty state when nothing is pending', () => {
