@@ -147,7 +147,7 @@ export const runAiSorterPipeline = (
 	// 5. Execute triage actions
 	const executionResult = executeTriageActions<ThreadLikeWithId>(directives, {
 		dryRun,
-		dailyLimit,
+		dailyLimit: remainingCapacity,
 	});
 
 	// 6. Gather storage metrics
