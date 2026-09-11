@@ -11,6 +11,9 @@ import {
 	composeDigestSubject,
 	composeDigestBody,
 	composeDigestHtml,
+	composeBacklogOnlyDigestSubject,
+	composeBacklogOnlyDigestBody,
+	composeBacklogOnlyDigestHtml,
 	formatIsoDate,
 	formatRelativeAge,
 	formatSizeKb,
@@ -519,4 +522,32 @@ test('composeDigestHtml renders the Actions Page link as a larger-font link that
 	assert.ok(html.includes(`href="${TEST_ACTIONS_URL}"`));
 	assert.ok(html.includes('target="_blank"'));
 	assert.ok(html.includes('font-size:17px'));
+});
+
+test('composeBacklogOnlyDigestSubject reports pending count and no new items', () => {
+	const subject = composeBacklogOnlyDigestSubject(new Date('2026-09-11'), 12, false);
+	assert.equal(subject, '📬 Daily Email Digest — 2026-09-11 — 12 pending, none new');
+});
+
+test('composeBacklogOnlyDigestSubject prefixes DRY RUN when applicable', () => {
+	const subject = composeBacklogOnlyDigestSubject(new Date('2026-09-11'), 1, true);
+	assert.ok(subject.startsWith('[DRY RUN]'));
+});
+
+test('composeBacklogOnlyDigestBody includes pending count and the Actions Page link', () => {
+	const body = composeBacklogOnlyDigestBody(3, TEST_ACTIONS_URL);
+	assert.ok(body.includes('3 items pending your review'));
+	assert.ok(body.includes(`👉 Review & take action: ${TEST_ACTIONS_URL}`));
+});
+
+test('composeBacklogOnlyDigestBody uses singular phrasing for exactly one pending item', () => {
+	const body = composeBacklogOnlyDigestBody(1, TEST_ACTIONS_URL);
+	assert.ok(body.includes('1 item pending your review'));
+});
+
+test('composeBacklogOnlyDigestHtml renders the pending count and a new-tab Actions Page link', () => {
+	const html = composeBacklogOnlyDigestHtml(3, TEST_ACTIONS_URL);
+	assert.ok(html.includes('3 items pending your review'));
+	assert.ok(html.includes(`href="${TEST_ACTIONS_URL}"`));
+	assert.ok(html.includes('target="_blank"'));
 });

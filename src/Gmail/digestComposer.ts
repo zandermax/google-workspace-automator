@@ -182,6 +182,36 @@ export const composeDigestSubject = (date: Date, isDryRun = false): string => {
 	return isDryRun ? `[DRY RUN] ${base}` : base;
 };
 
+export const composeBacklogOnlyDigestSubject = (
+	date: Date,
+	pendingCount: number,
+	isDryRun = false
+): string => {
+	const dateStr = formatIsoDate(date);
+	const base = `📬 Daily Email Digest — ${dateStr} — ${pendingCount} pending, none new`;
+	return isDryRun ? `[DRY RUN] ${base}` : base;
+};
+
+const pendingCountPhrase = (pendingCount: number): string =>
+	`${pendingCount} item${pendingCount === 1 ? '' : 's'} pending your review`;
+
+export const composeBacklogOnlyDigestBody = (
+	pendingCount: number,
+	actionsPageUrl: string
+): string =>
+	[
+		`No new emails processed — ${pendingCountPhrase(pendingCount)}.`,
+		`👉 Review & take action: ${actionsPageUrl}`,
+	].join('\n');
+
+export const composeBacklogOnlyDigestHtml = (
+	pendingCount: number,
+	actionsPageUrl: string
+): string => `<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
+	<div style="font-size:16px;margin-bottom:12px;">No new emails processed — ${pendingCountPhrase(pendingCount)}.</div>
+	<div><a href="${escapeHtml(actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:17px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review &amp; Take Action →</a></div>
+</div>`;
+
 export const composeDigestBody = (data: DailyDigestData): string => {
 	const lines: string[] = [];
 	const dateStr = formatIsoDate(data.date);
