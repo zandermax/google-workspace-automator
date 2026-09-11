@@ -157,6 +157,16 @@ const renderEmailItem = (
 		lines.push(`   ⏰ ${classification.keyDetail.trim()}`);
 	}
 
+	if (
+		directive.effectiveDuplicates &&
+		directive.effectiveDuplicates.length > 0
+	) {
+		lines.push('   Effective duplicates:');
+		for (const dup of directive.effectiveDuplicates) {
+			lines.push(`   • ${dup.subject}`);
+		}
+	}
+
 	if (email.unsubscribeUrl) {
 		lines.push(`   🔗 Unsubscribe: ${email.unsubscribeUrl}`);
 	} else if (email.unsubscribeMailto) {
@@ -338,6 +348,25 @@ const renderEmailItemHtml = (
 			? `<div style="margin-top:4px;color:#374151;">⏰ ${escapeHtml(classification.keyDetail.trim())}</div>`
 			: '';
 
+	let duplicatesHtml = '';
+	if (
+		directive.effectiveDuplicates &&
+		directive.effectiveDuplicates.length > 0
+	) {
+		const dupItemsHtml = directive.effectiveDuplicates
+			.map(
+				(dup) =>
+					`<li style="margin:2px 0;"><a href="${buildThreadLink(dup.threadId)}" style="color:#2563eb;text-decoration:none;">${escapeHtml(dup.subject)}</a></li>`
+			)
+			.join('\n\t\t');
+		duplicatesHtml = `<div style="margin-top:6px;font-size:12px;color:#4b5563;">
+	<span style="font-weight:600;">Effective duplicates:</span>
+	<ul style="margin:2px 0 0 18px;padding:0;color:#374151;">
+		${dupItemsHtml}
+	</ul>
+</div>`;
+	}
+
 	let unsubscribeHtml = '';
 	if (email.unsubscribeUrl) {
 		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeUrl)}" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a></div>`;
@@ -357,6 +386,7 @@ const renderEmailItemHtml = (
 	<div style="margin-top:4px;color:#1f2937;">→ ${escapeHtml(classification.summary)}</div>
 	${highlightsHtml ? `<ul style="margin:4px 0 0 18px;padding:0;color:#374151;">${highlightsHtml}</ul>` : ''}
 	${keyDetailHtml}
+	${duplicatesHtml}
 	${unsubscribeHtml}
 </div>`;
 };
