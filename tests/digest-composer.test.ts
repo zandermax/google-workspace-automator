@@ -10,6 +10,7 @@ import {
 import {
 	composeDigestSubject,
 	composeDigestBody,
+	composeDigestHtml,
 	formatIsoDate,
 	formatRelativeAge,
 	formatSizeKb,
@@ -195,11 +196,12 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 
 	// Action required section
 	assert.ok(body.includes('⚡ ACTION REQUIRED'));
+	assert.ok(body.includes('1. Sender item-1 <item-1@example.com> · 1 day ago · 500 KB'));
 	assert.ok(body.includes('Subject of item-1'));
 	assert.ok(body.includes('📄'));
 	assert.ok(body.includes('→ Summary of email item-1'));
 	assert.ok(body.includes('⏰ Due by 2026-09-15: $120.00'));
-	assert.ok(body.includes('⛓️‍💥 Unsubscribe: https://example.com/unsub'));
+	assert.ok(body.includes('🔗 Unsubscribe: https://example.com/unsub'));
 
 	// Categorized sections
 	assert.ok(
@@ -218,7 +220,7 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 		)
 	);
 	assert.ok(body.includes('📷 📎'));
-	assert.ok(body.includes('⛓️‍💥 Unsubscribe ✉️: mailto:optout@news.org'));
+	assert.ok(body.includes('✉️ Unsubscribe: mailto:optout@news.org'));
 
 	// Recycling in 7 days section
 	assert.ok(body.includes('🕰️ RECYCLING IN 7 DAYS  (1 · 1.2 MB total)'));
@@ -228,6 +230,75 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 			'[Rescue any thread before deletion by removing the Auto-Recycle/7d label in Gmail]'
 		)
 	);
+	// Numbering restarts per section (recycling section reuses newsletters' item-2)
+	assert.ok(
+		body.includes(
+			'1. Sender item-2 <item-2@example.com> · 3 days ago · triage/newsletters · 1.2 MB'
+		)
+	);
+});
+
+test('composeDigestHtml renders bold, thread-linked subjects, colored category cards, and hidden unsubscribe URLs', () => {
+	const date = new Date('2026-09-10T00:00:00Z');
+	const d1 = createMockDirective('item-1', 'triage/finance', {
+		actionRequired: true,
+		sizeKb: 500,
+		ageInDays: 1,
+		keyDetail: 'Due by 2026-09-15: $120.00',
+		attachmentIcons: ['📄'],
+		unsubscribeUrl: 'https://example.com/unsub',
+	});
+	const d2 = createMockDirective('item-2', 'triage/newsletters', {
+		sizeKb: 1200,
+		ageInDays: 3,
+		recycleLabel: 'Auto-Recycle/7d',
+		unsubscribeMailto: 'mailto:optout@news.org',
+	});
+
+	const data: DailyDigestData = {
+		date,
+		processedCount: 2,
+		dailyLimit: 50,
+		actionRequiredCount: 1,
+		autoRecyclingCount: 1,
+		isHighVolumeOverflow: false,
+		isDryRun: false,
+		storage: {
+			gmailUsedBytes: 4 * 1024 * 1024 * 1024,
+			gmailTotalBytes: 15 * 1024 * 1024 * 1024,
+			estimatedRecycleBytes: 1200 * 1024,
+		},
+		entries: [d1, d2],
+	};
+
+	const html = composeDigestHtml(data);
+
+	// Bold subject linked to the real Gmail thread
+	assert.ok(
+		html.includes(
+			'<a href="https://mail.google.com/mail/u/0/#all/item-1" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
+		)
+	);
+
+	// Numbering restarts per section/card
+	assert.ok(html.includes('1. Sender item-1'));
+	assert.ok(html.includes('1. Sender item-2'));
+
+	// Category card uses its accent color
+	assert.ok(html.includes('border-left:4px solid #059669'));
+
+	// Unsubscribe links hide the raw URL and keep distinct icons for link vs mailto
+	assert.ok(
+		html.includes(
+			'<a href="https://example.com/unsub" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a>'
+		)
+	);
+	assert.ok(
+		html.includes(
+			'<a href="mailto:optout@news.org" style="color:#6b7280;font-size:12px;text-decoration:none;">✉️ Unsubscribe</a>'
+		)
+	);
+	assert.ok(!html.includes('⛓️'));
 });
 
 test('composeDigestBody displays high volume overflow banner when triggered', () => {
