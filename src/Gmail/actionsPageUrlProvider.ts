@@ -8,7 +8,14 @@ const defaultActionsPageUrlProvider: ActionsPageUrlProvider = {
 			throw new Error('ScriptApp is not available in this environment.');
 		}
 
-		return ScriptApp.getService().getUrl();
+		const url = ScriptApp.getService().getUrl();
+		if (!url) {
+			throw new Error(
+				'ScriptApp.getService().getUrl() returned no URL — has the Web App been deployed yet? Deploy it first (see README), then redeploy after any code change.'
+			);
+		}
+
+		return url;
 	},
 };
 
