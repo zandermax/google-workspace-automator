@@ -1,4 +1,4 @@
-import { PENDING_ACTION_LABEL } from './actionRules';
+import { PENDING_ACTION_SEARCH_QUERY } from './actionRules';
 
 export interface PendingCountProvider {
 	countPending(): number;
@@ -10,7 +10,7 @@ const defaultPendingCountProvider: PendingCountProvider = {
 			throw new Error('GmailApp is not available in this environment.');
 		}
 
-		return GmailApp.search(`label:"${PENDING_ACTION_LABEL}" -in:trash`).length;
+		return GmailApp.search(PENDING_ACTION_SEARCH_QUERY).length;
 	},
 };
 
