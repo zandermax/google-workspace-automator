@@ -102,6 +102,7 @@ export interface DailyDigestData {
 	autoRecyclingCount: number;
 	isHighVolumeOverflow: boolean;
 	isDryRun: boolean;
+	actionsPageUrl: string;
 	storage: StorageMetrics;
 	entries: TriageExecutionDirective[];
 }

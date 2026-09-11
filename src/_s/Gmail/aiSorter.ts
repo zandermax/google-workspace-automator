@@ -9,6 +9,7 @@ import {
 	type SearchFunction,
 } from '../../Gmail/cascadeSelection';
 import { determineTriageDirectives } from '../../Gmail/actionRules';
+import { getActionsPageUrl, type ActionsPageUrlProvider } from '../../Gmail/actionsPageUrlProvider';
 import {
 	executeTriageActions,
 	type ActionExecutionResult,
@@ -16,7 +17,8 @@ import {
 } from '../../Gmail/actionExecutor';
 import { groupDirectivesByDuplicates } from '../../Gmail/deduplication';
 import { getStorageMetrics, type StorageProvider } from '../../Gmail/StorageStats';
-import { sendDigest, type EmailSender } from '../../Gmail/actions/sendDigest';
+import { sendDigest, sendBacklogOnlyDigest, type EmailSender } from '../../Gmail/actions/sendDigest';
+import { getPendingActionCount, type PendingCountProvider } from '../../Gmail/pendingActions';
 import {
 	type DailyDigestData,
 	type ExtractedEmailSnippet,
@@ -36,6 +38,8 @@ export interface AiSorterPipelineOptions {
 	emailSender?: EmailSender;
 	recipient?: string;
 	random?: () => number;
+	actionsPageUrlProvider?: ActionsPageUrlProvider;
+	pendingCountProvider?: PendingCountProvider;
 }
 
 export interface AiSorterPipelineResult {
@@ -60,9 +64,44 @@ export const runAiSorterPipeline = (
 		);
 	}
 
+	const actionsPageUrl = getActionsPageUrl(options.actionsPageUrlProvider);
+	const pendingCount = getPendingActionCount(options.pendingCountProvider);
+	const remainingCapacity = Math.max(0, dailyLimit - pendingCount);
+
+	if (remainingCapacity === 0) {
+		if (typeof Logger !== 'undefined') {
+			Logger.log(
+				`Backlog (${pendingCount}) already at or above daily limit (${dailyLimit}); skipping new processing.`
+			);
+		}
+
+		const digestResult = sendBacklogOnlyDigest(pendingCount, actionsPageUrl, {
+			recipient: options.recipient,
+			emailSender: options.emailSender,
+			isDryRun: dryRun,
+		});
+
+		return {
+			processedCount: 0,
+			actionRequiredCount: 0,
+			autoRecyclingCount: 0,
+			isHighVolumeOverflow: false,
+			isDryRun: dryRun,
+			executionResult: {
+				processedCount: 0,
+				labeledCount: 0,
+				recycledCount: 0,
+				skippedCount: 0,
+				isDryRun: dryRun,
+				directives: [],
+			},
+			digestSubject: digestResult.subject,
+		};
+	}
+
 	// 1. Fetch cascade selection
 	const cascadeResult = selectCascadeThreads<ThreadLike>({
-		limit: dailyLimit,
+		limit: remainingCapacity,
 		search: options.search,
 		random: options.random,
 	});
@@ -108,7 +147,7 @@ export const runAiSorterPipeline = (
 	// 5. Execute triage actions
 	const executionResult = executeTriageActions<ThreadLikeWithId>(directives, {
 		dryRun,
-		dailyLimit,
+		dailyLimit: remainingCapacity,
 	});
 
 	// 6. Gather storage metrics
@@ -134,6 +173,7 @@ export const runAiSorterPipeline = (
 		autoRecyclingCount,
 		isHighVolumeOverflow: cascadeResult.isHighVolumeOverflow,
 		isDryRun: dryRun,
+		actionsPageUrl,
 		storage: storageMetrics,
 		entries: displayEntries,
 	};

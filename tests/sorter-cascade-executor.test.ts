@@ -10,6 +10,7 @@ import {
 	determineTriageDirective,
 	determineTriageDirectives,
 	AUTO_RECYCLE_LABEL,
+	PENDING_ACTION_LABEL,
 } from '../src/Gmail/actionRules';
 import {
 	executeTriageActions,
@@ -445,13 +446,63 @@ test('executeTriageActions live mode applies labels, marks processed, and respec
 	assert.equal(result.labeledCount, 2);
 	assert.equal(result.recycledCount, 1);
 
-	// th-1 got triage/personal
-	// th-2 got triage/newsletters and Auto-Recycle/7d
+	// th-1 got triage/personal and Digest/Pending-Action
+	// th-2 got triage/newsletters, Auto-Recycle/7d, and Digest/Pending-Action
 	assert.deepEqual(labelsApplied, [
 		{ label: 'triage/personal', threadId: 'th-1' },
+		{ label: 'Digest/Pending-Action', threadId: 'th-1' },
 		{ label: 'triage/newsletters', threadId: 'th-2' },
 		{ label: 'Auto-Recycle/7d', threadId: 'th-2' },
+		{ label: 'Digest/Pending-Action', threadId: 'th-2' },
 	]);
 
 	assert.deepEqual(processedBatches, [['th-1', 'th-2']]);
+});
+
+test('executeTriageActions applies Digest/Pending-Action to every processed thread, including recycle-7d-only', () => {
+	const labelsApplied: Array<{ label: string; threadId: string }> = [];
+	const mockLabels = new Map<string, LabelLike>();
+	const getOrCreateLabel = (name: string): LabelLike => {
+		let l = mockLabels.get(name);
+		if (!l) {
+			l = {
+				getName: () => name,
+				addToThread: (t: any) => {
+					labelsApplied.push({ label: name, threadId: t.getId() });
+				},
+			};
+			mockLabels.set(name, l);
+		}
+		return l;
+	};
+
+	const directive = {
+		threadId: 'th-recycle',
+		classification: {
+			id: 'th-recycle',
+			category: 'triage/junk',
+			timeSensitive: true,
+			actionRequired: false,
+			summary: '',
+			highlights: [],
+			keyDetail: '',
+		} as TriageClassification,
+		email: { id: 'th-recycle' } as ExtractedEmailSnippet,
+		actionType: 'recycle-7d-only' as const,
+		recycleLabel: 'Auto-Recycle/7d' as const,
+		reason: 'stale junk',
+	};
+
+	executeTriageActions([directive], {
+		dryRun: false,
+		getLabel: (name) => mockLabels.get(name) ?? null,
+		createLabel: (name) => getOrCreateLabel(name),
+		resolveThread: (id) => createMockThread(id),
+		markProcessed: () => {},
+	});
+
+	assert.deepEqual(labelsApplied, [
+		{ label: 'Auto-Recycle/7d', threadId: 'th-recycle' },
+		{ label: 'Digest/Pending-Action', threadId: 'th-recycle' },
+	]);
 });

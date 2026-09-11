@@ -10,5 +10,9 @@
 		"https://www.googleapis.com/auth/drive.readonly",
 		"https://www.googleapis.com/auth/script.scriptapp",
 		"https://www.googleapis.com/auth/userinfo.email"
-	]
+	],
+	"webapp": {
+		"access": "MYSELF",
+		"executeAs": "USER_DEPLOYING"
+	}
 }

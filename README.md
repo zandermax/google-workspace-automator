@@ -291,6 +291,29 @@ If you are working on Drive rules, look under `src/Drive/*` and `src/_s/Drive/*`
 
 ---
 
+## Actions Page (Web App)
+
+The Actions Page is a small Web App that lists all threads carrying the `Digest/Pending-Action` label (linked from the daily digest email) and lets you Archive or Delete a thread directly, which clears the label. It relies on the `webapp` settings already present in `appsscript.json` (`access: "MYSELF"`, `executeAs: "USER_DEPLOYING"`) to restrict access to the deploying account only.
+
+`npm run push` builds and pushes code, but it does **not** create or update a Web App deployment — that's a separate, manual step:
+
+```bash
+cd dist
+clasp deploy
+```
+
+(or use the Apps Script UI: **Deploy > Manage deployments**). Re-run this after any code change, or the live `/exec` URL will keep serving the old version.
+
+After deploying, verify anonymous access is rejected:
+
+```bash
+npm run verify:webapp-access -- <deployed-exec-url>
+```
+
+As a final manual sanity check, open the deployed link in a private/incognito window (or while signed into a different Google account) and confirm access is denied.
+
+---
+
 ## Testing and local verification
 
 Run the unified test suite:

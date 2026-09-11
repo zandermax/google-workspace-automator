@@ -12,6 +12,9 @@ const HTML_FONT_STACK =
 
 export const SECTION_SEPARATOR = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
+/** Shared subject text so search-based automations (e.g. auto-recycle labeling) never drift from the real subject. */
+export const DIGEST_SUBJECT_TEXT = 'Daily Email Digest';
+
 export interface CategoryMetadata {
 	icon: string;
 	title: string;
@@ -178,9 +181,39 @@ const renderEmailItem = (
 
 export const composeDigestSubject = (date: Date, isDryRun = false): string => {
 	const dateStr = formatIsoDate(date);
-	const base = `📬 Daily Email Digest — ${dateStr}`;
+	const base = `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`;
 	return isDryRun ? `[DRY RUN] ${base}` : base;
 };
+
+export const composeBacklogOnlyDigestSubject = (
+	date: Date,
+	pendingCount: number,
+	isDryRun = false
+): string => {
+	const dateStr = formatIsoDate(date);
+	const base = `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr} — ${pendingCount} pending, none new`;
+	return isDryRun ? `[DRY RUN] ${base}` : base;
+};
+
+const pendingCountPhrase = (pendingCount: number): string =>
+	`${pendingCount} item${pendingCount === 1 ? '' : 's'} pending your review`;
+
+export const composeBacklogOnlyDigestBody = (
+	pendingCount: number,
+	actionsPageUrl: string
+): string =>
+	[
+		`No new emails processed — ${pendingCountPhrase(pendingCount)}.`,
+		`👉 Review & take action: ${actionsPageUrl}`,
+	].join('\n');
+
+export const composeBacklogOnlyDigestHtml = (
+	pendingCount: number,
+	actionsPageUrl: string
+): string => `<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
+	<div style="font-size:16px;margin-bottom:12px;">No new emails processed — ${pendingCountPhrase(pendingCount)}.</div>
+	<div><a href="${escapeHtml(actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:17px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review &amp; Take Action →</a></div>
+</div>`;
 
 export const composeDigestBody = (data: DailyDigestData): string => {
 	const lines: string[] = [];
@@ -188,10 +221,11 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 
 	// Header banner
 	const headerTitle = data.isDryRun
-		? `[DRY RUN] 📬 Daily Email Digest — ${dateStr}`
-		: `📬 Daily Email Digest — ${dateStr}`;
+		? `[DRY RUN] 📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`
+		: `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`;
 
 	lines.push(headerTitle);
+	lines.push(`👉 Review & take action: ${data.actionsPageUrl}`);
 
 	const spaceFreedStr = formatMegabytes(data.storage.estimatedRecycleBytes);
 	lines.push(
@@ -416,8 +450,8 @@ const renderCardHtml = (
 export const composeDigestHtml = (data: DailyDigestData): string => {
 	const dateStr = formatIsoDate(data.date);
 	const headerTitle = data.isDryRun
-		? `[DRY RUN] 📬 Daily Email Digest — ${dateStr}`
-		: `📬 Daily Email Digest — ${dateStr}`;
+		? `[DRY RUN] 📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`
+		: `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`;
 	const spaceFreedStr = formatMegabytes(data.storage.estimatedRecycleBytes);
 
 	const storageLines: string[] = [];
@@ -531,6 +565,7 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 
 	return `<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
 	<div style="font-size:20px;font-weight:700;margin-bottom:4px;">${escapeHtml(headerTitle)}</div>
+	<div style="margin-bottom:12px;"><a href="${escapeHtml(data.actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:17px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review &amp; Take Action →</a></div>
 	<div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Processed: ${data.processedCount} / ${data.dailyLimit} &nbsp;·&nbsp; Action needed: ${data.actionRequiredCount} &nbsp;·&nbsp; Auto-recycling: ${data.autoRecyclingCount} &nbsp;·&nbsp; Space freed: ${spaceFreedStr}</div>
 	${storageHtml}
 	${overflowHtml}

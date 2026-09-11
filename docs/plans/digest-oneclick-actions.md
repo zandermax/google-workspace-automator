@@ -2,10 +2,15 @@
 
 ## Plan Metadata
 
-- Status: proposed (not started)
+- Status: superseded — see design doc below
 - Mode: interactive
-- Canonical location: docs/plans/digest-oneclick-actions.md
+- Canonical location: [docs/superpowers/specs/2026-09-11-digest-oneclick-actions-design.md](../superpowers/specs/2026-09-11-digest-oneclick-actions-design.md)
 - Last updated: 2026-09-11
+
+**This plan's approach (signed per-item action links) was superseded during brainstorming.** The approved design uses a single Actions Page Web App backed by a persistent `Digest/Pending-Action` label and `access: MYSELF` deployment auth instead of signed tokens. See the design doc above for the current approach; everything below this point is historical context only.
+
+## Original goal and constraints (historical)
+
 - Goal: Let the daily digest email include per-item action links (delete, archive, mark read) that execute against the real Gmail thread when clicked, without requiring the user to open Gmail first.
 - Success criteria:
   - Clicking an action link in the digest performs that action on the correct thread and shows a simple confirmation page.

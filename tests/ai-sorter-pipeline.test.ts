@@ -80,6 +80,10 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 		dryRun: true,
 		dailyLimit: 10,
 		geminiClient,
+		pendingCountProvider: { countPending: () => 0 },
+		actionsPageUrlProvider: {
+			getActionsPageUrl: () => 'https://script.google.com/macros/s/test-deployment/exec',
+		},
 		search: (query) => {
 			if (query === CASCADE_QUERIES.unreadInbox) {
 				return [t1, t2];
@@ -111,6 +115,11 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 	assert.ok(sentEmail?.body.includes('Lunch tomorrow'));
 	assert.ok(sentEmail?.body.includes('📰 NEWSLETTERS'));
 	assert.ok(sentEmail?.body.includes('Weekly Digest'));
+	assert.ok(
+		sentEmail?.body.includes(
+			'https://script.google.com/macros/s/test-deployment/exec'
+		)
+	);
 });
 
 test('runAiSorterPipeline handles empty inbox run gracefully', () => {
@@ -124,6 +133,10 @@ test('runAiSorterPipeline handles empty inbox run gracefully', () => {
 		dryRun: false,
 		dailyLimit: 50,
 		geminiClient,
+		pendingCountProvider: { countPending: () => 0 },
+		actionsPageUrlProvider: {
+			getActionsPageUrl: () => 'https://script.google.com/macros/s/test-deployment/exec',
+		},
 		search: () => [],
 		storageProvider: {
 			getStorageUsed: () => 0,
@@ -185,6 +198,10 @@ test('runAiSorterPipeline groups duplicate threads in digest while processing bo
 		dryRun: true,
 		dailyLimit: 10,
 		geminiClient,
+		pendingCountProvider: { countPending: () => 0 },
+		actionsPageUrlProvider: {
+			getActionsPageUrl: () => 'https://script.google.com/macros/s/test-deployment/exec',
+		},
 		search: (query) => {
 			if (query === CASCADE_QUERIES.unreadInbox) {
 				return [t1, t2];
@@ -225,4 +242,91 @@ test('runAiSorterPipeline groups duplicate threads in digest while processing bo
 	// In html, each primary item has: <div style="font-size:14px;margin-top:2px;">
 	const primaryItemMatches = html.match(/<div style="font-size:14px;margin-top:2px;">/g);
 	assert.equal(primaryItemMatches?.length, 1);
+});
+
+test('runAiSorterPipeline skips new processing and sends a minimal digest when backlog is already at capacity', () => {
+	let sentEmail: { recipient: string; subject: string; body: string } | null = null;
+	let searchWasCalled = false;
+	let geminiWasCalled = false;
+
+	const geminiClient = new GeminiClient({
+		apiKey: 'test-key',
+		transport: {
+			fetch: () => {
+				geminiWasCalled = true;
+				return createMockGeminiTransport([]).fetch('', {});
+			},
+		},
+	});
+
+	const result = runAiSorterPipeline({
+		dryRun: false,
+		dailyLimit: 5,
+		geminiClient,
+		pendingCountProvider: { countPending: () => 5 },
+		actionsPageUrlProvider: {
+			getActionsPageUrl: () => 'https://script.google.com/macros/s/test-deployment/exec',
+		},
+		search: () => {
+			searchWasCalled = true;
+			return [];
+		},
+		recipient: 'owner@example.com',
+		emailSender: {
+			sendEmail: (recipient, subject, body) => {
+				sentEmail = { recipient, subject, body };
+			},
+		},
+	});
+
+	assert.equal(result.processedCount, 0);
+	assert.equal(searchWasCalled, false);
+	assert.equal(geminiWasCalled, false);
+	assert.ok(sentEmail !== null);
+	assert.ok(sentEmail?.subject.includes('5 pending, none new'));
+	assert.ok(
+		sentEmail?.body.includes(
+			'https://script.google.com/macros/s/test-deployment/exec'
+		)
+	);
+});
+
+test('runAiSorterPipeline only requests remaining capacity when some backlog already exists', () => {
+	const t1 = createMockThread('thread-1', 'Lunch tomorrow', 'friend@example.com', 'Are we still on for lunch?');
+	let requestedLimit = -1;
+
+	const geminiClient = new GeminiClient({
+		apiKey: 'test-key',
+		transport: createMockGeminiTransport([
+			{
+				id: 'thread-1',
+				category: 'triage/personal',
+				timeSensitive: false,
+				actionRequired: false,
+				summary: 'Lunch tomorrow inquiry.',
+				highlights: [],
+				keyDetail: '',
+			},
+		]),
+	});
+
+	runAiSorterPipeline({
+		dryRun: true,
+		dailyLimit: 10,
+		geminiClient,
+		pendingCountProvider: { countPending: () => 7 },
+		actionsPageUrlProvider: { getActionsPageUrl: () => 'https://example.com/exec' },
+		search: (query, _start, max) => {
+			if (query === CASCADE_QUERIES.unreadInbox) {
+				requestedLimit = max;
+				return [t1];
+			}
+			return [];
+		},
+		storageProvider: { getStorageUsed: () => 0, getStorageLimit: () => 0 },
+		recipient: 'owner@example.com',
+		emailSender: { sendEmail: () => {} },
+	});
+
+	assert.equal(requestedLimit, 3);
 });
