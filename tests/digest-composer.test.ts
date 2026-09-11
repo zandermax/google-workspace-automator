@@ -10,6 +10,7 @@ import {
 import {
 	composeDigestSubject,
 	composeDigestBody,
+	composeDigestHtml,
 	formatIsoDate,
 	formatRelativeAge,
 	formatSizeKb,
@@ -36,6 +37,7 @@ const createMockDirective = (
 		unsubscribeUrl?: string;
 		unsubscribeMailto?: string;
 		keyDetail?: string;
+		effectiveDuplicates?: { threadId: string; subject: string }[];
 	} = {}
 ): TriageExecutionDirective => {
 	const email: ExtractedEmailSnippet = {
@@ -74,6 +76,7 @@ const createMockDirective = (
 		triageLabel: category,
 		recycleLabel: overrides.recycleLabel,
 		reason: 'test reason',
+		effectiveDuplicates: overrides.effectiveDuplicates,
 	};
 };
 
@@ -195,11 +198,12 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 
 	// Action required section
 	assert.ok(body.includes('⚡ ACTION REQUIRED'));
+	assert.ok(body.includes('1. Sender item-1 <item-1@example.com> · 1 day ago · 500 KB'));
 	assert.ok(body.includes('Subject of item-1'));
 	assert.ok(body.includes('📄'));
 	assert.ok(body.includes('→ Summary of email item-1'));
 	assert.ok(body.includes('⏰ Due by 2026-09-15: $120.00'));
-	assert.ok(body.includes('⛓️‍💥 Unsubscribe: https://example.com/unsub'));
+	assert.ok(body.includes('🔗 Unsubscribe: https://example.com/unsub'));
 
 	// Categorized sections
 	assert.ok(
@@ -218,7 +222,7 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 		)
 	);
 	assert.ok(body.includes('📷 📎'));
-	assert.ok(body.includes('⛓️‍💥 Unsubscribe ✉️: mailto:optout@news.org'));
+	assert.ok(body.includes('✉️ Unsubscribe: mailto:optout@news.org'));
 
 	// Recycling in 7 days section
 	assert.ok(body.includes('🕰️ RECYCLING IN 7 DAYS  (1 · 1.2 MB total)'));
@@ -228,6 +232,75 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 			'[Rescue any thread before deletion by removing the Auto-Recycle/7d label in Gmail]'
 		)
 	);
+	// Numbering restarts per section (recycling section reuses newsletters' item-2)
+	assert.ok(
+		body.includes(
+			'1. Sender item-2 <item-2@example.com> · 3 days ago · triage/newsletters · 1.2 MB'
+		)
+	);
+});
+
+test('composeDigestHtml renders bold, thread-linked subjects, colored category cards, and hidden unsubscribe URLs', () => {
+	const date = new Date('2026-09-10T00:00:00Z');
+	const d1 = createMockDirective('item-1', 'triage/finance', {
+		actionRequired: true,
+		sizeKb: 500,
+		ageInDays: 1,
+		keyDetail: 'Due by 2026-09-15: $120.00',
+		attachmentIcons: ['📄'],
+		unsubscribeUrl: 'https://example.com/unsub',
+	});
+	const d2 = createMockDirective('item-2', 'triage/newsletters', {
+		sizeKb: 1200,
+		ageInDays: 3,
+		recycleLabel: 'Auto-Recycle/7d',
+		unsubscribeMailto: 'mailto:optout@news.org',
+	});
+
+	const data: DailyDigestData = {
+		date,
+		processedCount: 2,
+		dailyLimit: 50,
+		actionRequiredCount: 1,
+		autoRecyclingCount: 1,
+		isHighVolumeOverflow: false,
+		isDryRun: false,
+		storage: {
+			gmailUsedBytes: 4 * 1024 * 1024 * 1024,
+			gmailTotalBytes: 15 * 1024 * 1024 * 1024,
+			estimatedRecycleBytes: 1200 * 1024,
+		},
+		entries: [d1, d2],
+	};
+
+	const html = composeDigestHtml(data);
+
+	// Bold subject linked to the real Gmail thread
+	assert.ok(
+		html.includes(
+			'<a href="https://mail.google.com/mail/u/0/#all/item-1" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
+		)
+	);
+
+	// Numbering restarts per section/card
+	assert.ok(html.includes('1. Sender item-1'));
+	assert.ok(html.includes('1. Sender item-2'));
+
+	// Category card uses its accent color
+	assert.ok(html.includes('border-left:4px solid #059669'));
+
+	// Unsubscribe links hide the raw URL and keep distinct icons for link vs mailto
+	assert.ok(
+		html.includes(
+			'<a href="https://example.com/unsub" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a>'
+		)
+	);
+	assert.ok(
+		html.includes(
+			'<a href="mailto:optout@news.org" style="color:#6b7280;font-size:12px;text-decoration:none;">✉️ Unsubscribe</a>'
+		)
+	);
+	assert.ok(!html.includes('⛓️'));
 });
 
 test('composeDigestBody displays high volume overflow banner when triggered', () => {
@@ -323,4 +396,80 @@ test('sendDigest dispatches email with correct recipient, subject, and content',
 	assert.equal(sentSubject, '📬 Daily Email Digest — 2026-09-10');
 	assert.ok(sentBody.includes('Processed: 0 / 50'));
 	assert.equal(result.recipient, 'owner@example.com');
+});
+
+test('renders effective duplicates in plain text and html when present', () => {
+	const directiveWithDups = createMockDirective('primary-1', 'triage/newsletters', {
+		effectiveDuplicates: [
+			{ threadId: 'dup-1', subject: 'Duplicate Subject 1 <tag>' },
+			{ threadId: 'dup-2', subject: 'Duplicate Subject 2' },
+		],
+	});
+	const directiveWithoutDups = createMockDirective('solo-1', 'triage/newsletters', {
+		effectiveDuplicates: [],
+	});
+
+	const data: DailyDigestData = {
+		date: new Date('2026-09-10'),
+		processedCount: 2,
+		dailyLimit: 50,
+		actionRequiredCount: 0,
+		autoRecyclingCount: 0,
+		isHighVolumeOverflow: false,
+		isDryRun: false,
+		storage: {
+			gmailUsedBytes: 0,
+			gmailTotalBytes: 0,
+			estimatedRecycleBytes: 0,
+		},
+		entries: [directiveWithDups, directiveWithoutDups],
+	};
+
+	const body = composeDigestBody(data);
+	assert.ok(
+		body.includes(
+			'   Effective duplicates:\n   • Duplicate Subject 1 <tag>\n   • Duplicate Subject 2'
+		)
+	);
+
+	const html = composeDigestHtml(data);
+	const expectedHtmlBlock =
+		'<div style="margin-top:6px;font-size:12px;color:#4b5563;">\n' +
+		'\t<span style="font-weight:600;">Effective duplicates:</span>\n' +
+		'\t<ul style="margin:2px 0 0 18px;padding:0;color:#374151;">\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-1" style="color:#2563eb;text-decoration:none;">Duplicate Subject 1 &lt;tag&gt;</a></li>\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-2" style="color:#2563eb;text-decoration:none;">Duplicate Subject 2</a></li>\n' +
+		'\t</ul>\n' +
+		'</div>';
+
+	assert.ok(html.includes(expectedHtmlBlock));
+});
+
+test('does not render effective duplicates when list is empty or undefined', () => {
+	const directiveEmpty = createMockDirective('empty-1', 'triage/personal', {
+		effectiveDuplicates: [],
+	});
+	const directiveUndefined = createMockDirective('undef-1', 'triage/personal');
+
+	const data: DailyDigestData = {
+		date: new Date('2026-09-10'),
+		processedCount: 2,
+		dailyLimit: 50,
+		actionRequiredCount: 0,
+		autoRecyclingCount: 0,
+		isHighVolumeOverflow: false,
+		isDryRun: false,
+		storage: {
+			gmailUsedBytes: 0,
+			gmailTotalBytes: 0,
+			estimatedRecycleBytes: 0,
+		},
+		entries: [directiveEmpty, directiveUndefined],
+	};
+
+	const body = composeDigestBody(data);
+	assert.ok(!body.includes('Effective duplicates:'));
+
+	const html = composeDigestHtml(data);
+	assert.ok(!html.includes('Effective duplicates:'));
 });

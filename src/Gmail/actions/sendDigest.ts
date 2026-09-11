@@ -1,9 +1,9 @@
 import {
 	type DailyDigestData,
 } from '@/types/Gmail/triage';
-import { escapeHtml } from '../../helpers/html';
 import {
 	composeDigestBody,
+	composeDigestHtml,
 	composeDigestSubject,
 } from '../digestComposer';
 
@@ -71,7 +71,7 @@ export const sendDigest = (
 	const body = composeDigestBody(data);
 	const sender = options.emailSender ?? defaultEmailSender;
 
-	const htmlBody = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, monospace; white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${escapeHtml(body)}</div>`;
+	const htmlBody = composeDigestHtml(data);
 
 	sender.sendEmail(recipient, subject, body, { htmlBody });
 

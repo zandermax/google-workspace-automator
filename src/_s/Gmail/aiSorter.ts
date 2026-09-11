@@ -14,6 +14,7 @@ import {
 	type ActionExecutionResult,
 	type ThreadLikeWithId,
 } from '../../Gmail/actionExecutor';
+import { groupDirectivesByDuplicates } from '../../Gmail/deduplication';
 import { getStorageMetrics, type StorageProvider } from '../../Gmail/StorageStats';
 import { sendDigest, type EmailSender } from '../../Gmail/actions/sendDigest';
 import {
@@ -116,10 +117,12 @@ export const runAiSorterPipeline = (
 	});
 
 	// 7. Compose and send daily digest
-	const actionRequiredCount = directives.filter(
+	const displayEntries = groupDirectivesByDuplicates(directives);
+
+	const actionRequiredCount = displayEntries.filter(
 		(d) => d.classification.actionRequired
 	).length;
-	const autoRecyclingCount = directives.filter(
+	const autoRecyclingCount = displayEntries.filter(
 		(d) => d.recycleLabel !== undefined
 	).length;
 
@@ -132,7 +135,7 @@ export const runAiSorterPipeline = (
 		isHighVolumeOverflow: cascadeResult.isHighVolumeOverflow,
 		isDryRun: dryRun,
 		storage: storageMetrics,
-		entries: directives,
+		entries: displayEntries,
 	};
 
 	const digestResult = sendDigest(digestData, {

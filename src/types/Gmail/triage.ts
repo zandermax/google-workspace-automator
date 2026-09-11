@@ -57,6 +57,11 @@ export interface GeminiClassificationInput {
 	sizeKb: number;
 }
 
+export interface EffectiveDuplicateRef {
+	threadId: string;
+	subject: string;
+}
+
 export interface TriageClassification {
 	id: string;
 	category: TriageCategory;
@@ -65,6 +70,7 @@ export interface TriageClassification {
 	summary: string;
 	highlights: string[];
 	keyDetail: string;
+	duplicateOfId?: string;
 }
 
 export type TriageActionType =
@@ -78,6 +84,7 @@ export interface TriageExecutionDirective {
 	triageLabel?: TriageCategory;
 	recycleLabel?: 'Auto-Recycle/7d';
 	reason: string;
+	effectiveDuplicates?: EffectiveDuplicateRef[];
 }
 
 export interface StorageMetrics {
