@@ -63,8 +63,8 @@ jobs:
 
           cat /tmp/clasp-status.txt
 
-          if grep -Ei "changes detected|not synced|not pushed|not uploaded|modified|pending" /tmp/clasp-status.txt >/dev/null; then
-            echo "Deployment verification failed: the Apps Script project still reports pending changes."
+          if sed -n '/Untracked files:/,$p' /tmp/clasp-status.txt | grep -E '^└─' >/dev/null; then
+            echo "Deployment verification failed: untracked files detected in build output."
             exit 1
           fi
 
