@@ -12,6 +12,9 @@ const HTML_FONT_STACK =
 
 export const SECTION_SEPARATOR = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
+/** Shared subject text so search-based automations (e.g. auto-recycle labeling) never drift from the real subject. */
+export const DIGEST_SUBJECT_TEXT = 'Daily Email Digest';
+
 export interface CategoryMetadata {
 	icon: string;
 	title: string;
@@ -178,7 +181,7 @@ const renderEmailItem = (
 
 export const composeDigestSubject = (date: Date, isDryRun = false): string => {
 	const dateStr = formatIsoDate(date);
-	const base = `📬 Daily Email Digest — ${dateStr}`;
+	const base = `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`;
 	return isDryRun ? `[DRY RUN] ${base}` : base;
 };
 
@@ -188,7 +191,7 @@ export const composeBacklogOnlyDigestSubject = (
 	isDryRun = false
 ): string => {
 	const dateStr = formatIsoDate(date);
-	const base = `📬 Daily Email Digest — ${dateStr} — ${pendingCount} pending, none new`;
+	const base = `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr} — ${pendingCount} pending, none new`;
 	return isDryRun ? `[DRY RUN] ${base}` : base;
 };
 
@@ -218,8 +221,8 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 
 	// Header banner
 	const headerTitle = data.isDryRun
-		? `[DRY RUN] 📬 Daily Email Digest — ${dateStr}`
-		: `📬 Daily Email Digest — ${dateStr}`;
+		? `[DRY RUN] 📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`
+		: `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`;
 
 	lines.push(headerTitle);
 	lines.push(`👉 Review & take action: ${data.actionsPageUrl}`);
@@ -447,8 +450,8 @@ const renderCardHtml = (
 export const composeDigestHtml = (data: DailyDigestData): string => {
 	const dateStr = formatIsoDate(data.date);
 	const headerTitle = data.isDryRun
-		? `[DRY RUN] 📬 Daily Email Digest — ${dateStr}`
-		: `📬 Daily Email Digest — ${dateStr}`;
+		? `[DRY RUN] 📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`
+		: `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`;
 	const spaceFreedStr = formatMegabytes(data.storage.estimatedRecycleBytes);
 
 	const storageLines: string[] = [];

@@ -9,6 +9,7 @@ const gmailTriggerFunctions = [
 	'deleteOldUpdates',
 	'dryRunAiSorter',
 	'dryRunSortInbox',
+	'labelDigestForRecycle',
 	'recycle',
 ] as const;
 
