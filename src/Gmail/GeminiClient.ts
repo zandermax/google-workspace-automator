@@ -212,6 +212,9 @@ export const CLASSIFICATION_RESPONSE_SCHEMA = {
 				items: { type: 'STRING' },
 			},
 			keyDetail: { type: 'STRING' },
+			duplicateOfId: {
+				type: 'STRING',
+			},
 		},
 		required: [
 			'id',
@@ -275,6 +278,8 @@ Fields to return for each item:
 - "summary": A concise sentence (maximum 12 words) describing what the email is actually about.
 - "highlights": An array of up to 3 short notable takeaway strings from the email content (empty array if none).
 - "keyDetail": The single most operationally relevant detail if actionRequired (e.g., deadline, amount, date), otherwise an empty string "".
+
+When multiple emails in this batch are the same or not meaningfully different (e.g. repeated reminders or notifications for the exact same event or topic), set "duplicateOfId" to the "id" of the other email it duplicates. If the email is unique or the primary instance, leave "duplicateOfId" empty or omitted.
 
 Return a JSON array of objects conforming to this specification.`;
 

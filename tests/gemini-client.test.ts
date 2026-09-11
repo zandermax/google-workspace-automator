@@ -9,6 +9,7 @@ import {
 	GEMINI_FALLBACK_MODELS,
 	selectFlashFallbackModels,
 	SYSTEM_INSTRUCTION,
+	CLASSIFICATION_RESPONSE_SCHEMA,
 	type HttpTransport,
 	type HttpResponseLike,
 } from '../src/Gmail/GeminiClient';
@@ -722,3 +723,16 @@ test('buildPromptContent formats input count and stringifies items', () => {
 	assert.ok(content.includes('thread-1'));
 	assert.ok(content.includes('thread-2'));
 });
+
+test('CLASSIFICATION_RESPONSE_SCHEMA and SYSTEM_INSTRUCTION include duplicateOfId', () => {
+	const properties = (CLASSIFICATION_RESPONSE_SCHEMA.items as any).properties;
+	assert.ok(properties.duplicateOfId, 'duplicateOfId property should exist in schema');
+	assert.equal(properties.duplicateOfId.type, 'STRING');
+	const required = (CLASSIFICATION_RESPONSE_SCHEMA.items as any).required;
+	assert.ok(!required.includes('duplicateOfId'), 'duplicateOfId must be optional and not in required list');
+	assert.ok(
+		SYSTEM_INSTRUCTION.includes('duplicateOfId'),
+		'SYSTEM_INSTRUCTION should mention duplicateOfId'
+	);
+});
+
