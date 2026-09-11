@@ -39,6 +39,16 @@ export const escapeHtml = (text: string): string => {
 };
 
 /**
+ * Rewrites every non-ASCII character as a numeric HTML entity so emoji survive
+ * regardless of the charset an email client assumes for the message body.
+ */
+export const toHtmlNumericEntities = (html: string): string =>
+	html.replace(
+		/[\u0080-\u{10FFFF}]/gu,
+		(char) => `&#${char.codePointAt(0) ?? 0};`
+	);
+
+/**
  * Decodes named, decimal, and hexadecimal HTML entities in a single pass.
  */
 export const decodeHtmlEntities = (text: string): string =>

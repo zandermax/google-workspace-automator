@@ -15,6 +15,7 @@
 		"@babel/plugin-transform-class-properties",
 		"@babel/plugin-transform-numeric-separator",
 		"./scripts/babel-plugin-strip-exports.ts",
+		"./scripts/babel-plugin-escape-non-ascii.ts",
 		[
 			"babel-plugin-transform-remove-imports",
 			{

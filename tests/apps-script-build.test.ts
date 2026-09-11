@@ -189,3 +189,37 @@ test('manifest enforces least privilege and excludes unused advanced services', 
 		'Manifest should include userinfo.email for Session.getActiveUser recipient resolution'
 	);
 });
+
+test('escapes non-ASCII literals so Apps Script cannot mangle emoji', () => {
+	const code =
+		transformFileSync(
+			new URL('../src/Gmail/digestComposer.ts', import.meta.url).pathname
+		)?.code ?? '';
+
+	// U+1F4EC as its two UTF-16 surrogate escapes
+	assert.match(code, /\\ud83d\\udcec/);
+	assert.doesNotMatch(code, /[\u0080-\u{10FFFF}]/u);
+});
+
+test('compiled Apps Script output is pure ASCII', () => {
+	const distDir = new URL('../dist', import.meta.url).pathname;
+
+	const collect = (dir: string): string[] =>
+		readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+			const fullPath = `${dir}/${entry.name}`;
+			if (entry.isDirectory()) {
+				return collect(fullPath);
+			}
+			return entry.name.endsWith('.js') ? [fullPath] : [];
+		});
+
+	const offenders = collect(distDir).filter((file) =>
+		/[\u0080-\u{10FFFF}]/u.test(readFileSync(file, 'utf8'))
+	);
+
+	assert.deepEqual(
+		offenders,
+		[],
+		`Non-ASCII characters survive in compiled output and will be corrupted by Apps Script:\n${offenders.join('\n')}`
+	);
+});

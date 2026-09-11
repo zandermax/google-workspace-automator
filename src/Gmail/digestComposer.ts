@@ -4,8 +4,13 @@ import {
 	type TriageExecutionDirective,
 	TRIAGE_CATEGORIES,
 } from '@/types/Gmail/triage';
-import { formatBytes, formatGigabytes, formatMegabytes } from './StorageStats';
-import { escapeHtml } from '../helpers/html';
+import {
+	formatBytes,
+	formatGigabytes,
+	formatMegabytes,
+	formatUsagePercent,
+} from './StorageStats';
+import { escapeHtml, toHtmlNumericEntities } from '../helpers/html';
 
 const HTML_FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -210,10 +215,11 @@ export const composeBacklogOnlyDigestBody = (
 export const composeBacklogOnlyDigestHtml = (
 	pendingCount: number,
 	actionsPageUrl: string
-): string => `<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
+): string =>
+	toHtmlNumericEntities(`<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
 	<div style="font-size:16px;margin-bottom:12px;">No new emails processed — ${pendingCountPhrase(pendingCount)}.</div>
 	<div><a href="${escapeHtml(actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:17px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review &amp; Take Action →</a></div>
-</div>`;
+</div>`);
 
 export const composeDigestBody = (data: DailyDigestData): string => {
 	const lines: string[] = [];
@@ -237,7 +243,7 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 	lines.push('🗄️ Storage');
 	if (data.storage.gmailTotalBytes > 0) {
 		lines.push(
-			`- Gmail/Drive used: ${formatBytes(data.storage.gmailUsedBytes)} / ${formatGigabytes(data.storage.gmailTotalBytes)}`
+			`- Google Account used: ${formatBytes(data.storage.gmailUsedBytes)} / ${formatGigabytes(data.storage.gmailTotalBytes)} (${formatUsagePercent(data.storage.gmailUsedBytes, data.storage.gmailTotalBytes)})`
 		);
 	} else {
 		lines.push(`- Storage used: ${formatBytes(data.storage.gmailUsedBytes)}`);
@@ -457,7 +463,7 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 	const storageLines: string[] = [];
 	if (data.storage.gmailTotalBytes > 0) {
 		storageLines.push(
-			`Gmail/Drive used: ${formatBytes(data.storage.gmailUsedBytes)} / ${formatGigabytes(data.storage.gmailTotalBytes)}`
+			`Google Account used: ${formatBytes(data.storage.gmailUsedBytes)} / ${formatGigabytes(data.storage.gmailTotalBytes)} (${formatUsagePercent(data.storage.gmailUsedBytes, data.storage.gmailTotalBytes)})`
 		);
 	} else {
 		storageLines.push(
@@ -563,7 +569,7 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 			? '<div style="text-align:center;padding:24px 0;color:#374151;">🎉 All caught up! No unprocessed emails found for today.</div>'
 			: '';
 
-	return `<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
+	return toHtmlNumericEntities(`<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
 	<div style="font-size:20px;font-weight:700;margin-bottom:4px;">${escapeHtml(headerTitle)}</div>
 	<div style="margin-bottom:12px;"><a href="${escapeHtml(data.actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:17px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review &amp; Take Action →</a></div>
 	<div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Processed: ${data.processedCount} / ${data.dailyLimit} &nbsp;·&nbsp; Action needed: ${data.actionRequiredCount} &nbsp;·&nbsp; Auto-recycling: ${data.autoRecyclingCount} &nbsp;·&nbsp; Space freed: ${spaceFreedStr}</div>
@@ -572,5 +578,5 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 	${sections.join('')}
 	${recyclingFooterHtml}
 	${emptyStateHtml}
-</div>`;
+</div>`);
 };

@@ -4,7 +4,16 @@ import {
 	escapeHtml,
 	decodeHtmlEntities,
 	stripHtml,
+	toHtmlNumericEntities,
 } from '../src/helpers/html';
+
+test('toHtmlNumericEntities converts non-BMP and BMP emoji to numeric entities', () => {
+	assert.equal(
+		toHtmlNumericEntities('<div>📬 Digest — ⚡</div>'),
+		'<div>&#128236; Digest &#8212; &#9889;</div>'
+	);
+	assert.equal(toHtmlNumericEntities('<b>plain ascii</b>'), '<b>plain ascii</b>');
+});
 
 test('escapeHtml escapes HTML-unsafe characters using fallback single-pass map', () => {
 	const raw = `Tom & Jerry <"Cartoons" & 'Animation'>`;

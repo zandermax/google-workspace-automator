@@ -88,6 +88,7 @@ export interface TriageExecutionDirective {
 }
 
 export interface StorageMetrics {
+	/** Whole-account usage/quota (Drive + Gmail + Photos), not Gmail alone. */
 	gmailUsedBytes: number;
 	gmailTotalBytes: number;
 	driveFreeBytes?: number;

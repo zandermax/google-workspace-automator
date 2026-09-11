@@ -6,6 +6,7 @@ import {
 	formatBytes,
 	formatMegabytes,
 	formatGigabytes,
+	formatUsagePercent,
 } from '../src/Gmail/StorageStats';
 import {
 	composeDigestSubject,
@@ -122,6 +123,61 @@ test('StorageStats correctly calculates recycle size and formats units', () => {
 	assert.equal(metrics.estimatedRecycleBytes, 4 * 1024 * 1024);
 });
 
+test('getStorageMetrics reports whole-account usage from the Drive about endpoint', () => {
+	// DriveApp.getStorageUsed() only counts Drive files, so it must not win here.
+	const globalWithGas = globalThis as any;
+	const originals = {
+		UrlFetchApp: globalWithGas.UrlFetchApp,
+		ScriptApp: globalWithGas.ScriptApp,
+		DriveApp: globalWithGas.DriveApp,
+	};
+
+	let requestedUrl = '';
+	globalWithGas.ScriptApp = { getOAuthToken: () => 'test-token' };
+	globalWithGas.DriveApp = {
+		getStorageUsed: () => 3 * 1024 * 1024 * 1024,
+		getStorageLimit: () => 15 * 1024 * 1024 * 1024,
+	};
+	globalWithGas.UrlFetchApp = {
+		fetch: (url: string) => {
+			requestedUrl = url;
+			return {
+				getResponseCode: () => 200,
+				getContentText: () =>
+					JSON.stringify({
+						storageQuota: {
+							limit: String(15 * 1024 * 1024 * 1024),
+							usage: String(14 * 1024 * 1024 * 1024),
+						},
+					}),
+			};
+		},
+	};
+
+	try {
+		const metrics = getStorageMetrics();
+
+		assert.equal(
+			requestedUrl,
+			'https://www.googleapis.com/drive/v3/about?fields=storageQuota'
+		);
+		assert.equal(metrics.gmailUsedBytes, 14 * 1024 * 1024 * 1024);
+		assert.equal(metrics.gmailTotalBytes, 15 * 1024 * 1024 * 1024);
+		assert.equal(
+			formatUsagePercent(metrics.gmailUsedBytes, metrics.gmailTotalBytes),
+			'93%'
+		);
+	} finally {
+		for (const [key, value] of Object.entries(originals)) {
+			if (value === undefined) {
+				delete globalWithGas[key];
+			} else {
+				globalWithGas[key] = value;
+			}
+		}
+	}
+});
+
 test('digestComposer formatting helpers format dates, ages, and sizes', () => {
 	const testDate = new Date('2026-09-10T15:30:00Z');
 	assert.equal(formatIsoDate(testDate), '2026-09-10');
@@ -199,7 +255,7 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 		body.includes('Processed: 3 / 50 | Action needed: 1 | Auto-recycling: 1')
 	);
 	assert.ok(body.includes('🗄️ Storage'));
-	assert.ok(body.includes('- Gmail/Drive used: 4 GB / 15 GB'));
+	assert.ok(body.includes('- Google Account used: 4 GB / 15 GB (27%)'));
 	assert.ok(body.includes('- Free space: 11 GB'));
 
 	// Action required section
@@ -296,15 +352,16 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 	// Category card uses its accent color
 	assert.ok(html.includes('border-left:4px solid #059669'));
 
-	// Unsubscribe links hide the raw URL and keep distinct icons for link vs mailto
+	// Unsubscribe links hide the raw URL and keep distinct icons for link vs mailto,
+	// emitted as numeric entities so non-BMP emoji survive email transport
 	assert.ok(
 		html.includes(
-			'<a href="https://example.com/unsub" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a>'
+			'<a href="https://example.com/unsub" style="color:#6b7280;font-size:12px;text-decoration:none;">&#128279; Unsubscribe</a>'
 		)
 	);
 	assert.ok(
 		html.includes(
-			'<a href="mailto:optout@news.org" style="color:#6b7280;font-size:12px;text-decoration:none;">✉️ Unsubscribe</a>'
+			'<a href="mailto:optout@news.org" style="color:#6b7280;font-size:12px;text-decoration:none;">&#9993;&#65039; Unsubscribe</a>'
 		)
 	);
 	assert.ok(!html.includes('⛓️'));
