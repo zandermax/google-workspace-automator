@@ -49,6 +49,17 @@ test('transforms class fields unsupported by Apps Script', () => {
 	assert.doesNotMatch(result?.code ?? '', /\btoString =/);
 });
 
+test('digest-actions Web App entry point strips exports and exposes global functions', () => {
+	const result = transformFileSync(
+		new URL('../src/_s/Gmail/digest-actions.ts', import.meta.url).pathname
+	);
+
+	assert.doesNotMatch(result?.code ?? '', /export|exports/);
+	assert.match(result?.code ?? '', /const doGet = /);
+	assert.match(result?.code ?? '', /const handleArchiveDigestThread = /);
+	assert.match(result?.code ?? '', /const handleDeleteDigestThread = /);
+});
+
 test('loads DriveQuery before its subclasses', () => {
 	const fileNames = readdirSync(
 		new URL('../src/Drive/DriveQuery/', import.meta.url)

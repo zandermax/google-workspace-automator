@@ -26,7 +26,7 @@ export interface DigestActionResult {
 	resolved: boolean;
 }
 
-const defaultGetLabel = (name: string): RemovableLabelLike | null => {
+const defaultGetRemovableLabel = (name: string): RemovableLabelLike | null => {
 	if (typeof GmailApp === 'undefined') {
 		throw new Error('GmailApp is not available in this environment.');
 	}
@@ -55,7 +55,7 @@ export const archiveDigestThread = <TThread extends ArchivableThread = Archivabl
 	options: DigestActionOptions<TThread> = {}
 ): DigestActionResult => {
 	const resolveThread = options.resolveThread ?? (defaultResolveArchivableThread as (id: string) => TThread | null);
-	const getLabel = options.getLabel ?? defaultGetLabel;
+	const getLabel = options.getLabel ?? defaultGetRemovableLabel;
 
 	const thread = resolveThread(threadId);
 	if (!thread) {
