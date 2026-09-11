@@ -192,6 +192,7 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 		: `📬 Daily Email Digest — ${dateStr}`;
 
 	lines.push(headerTitle);
+	lines.push(`👉 Review & take action: ${data.actionsPageUrl}`);
 
 	const spaceFreedStr = formatMegabytes(data.storage.estimatedRecycleBytes);
 	lines.push(
@@ -531,6 +532,7 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 
 	return `<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
 	<div style="font-size:20px;font-weight:700;margin-bottom:4px;">${escapeHtml(headerTitle)}</div>
+	<div style="margin-bottom:12px;"><a href="${escapeHtml(data.actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:17px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review &amp; Take Action →</a></div>
 	<div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Processed: ${data.processedCount} / ${data.dailyLimit} &nbsp;·&nbsp; Action needed: ${data.actionRequiredCount} &nbsp;·&nbsp; Auto-recycling: ${data.autoRecyclingCount} &nbsp;·&nbsp; Space freed: ${spaceFreedStr}</div>
 	${storageHtml}
 	${overflowHtml}

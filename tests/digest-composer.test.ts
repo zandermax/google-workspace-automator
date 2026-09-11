@@ -24,6 +24,8 @@ import type {
 	TriageClassification,
 } from '../src/types/Gmail/triage';
 
+const TEST_ACTIONS_URL = 'https://script.google.com/macros/s/test-deployment/exec';
+
 const createMockDirective = (
 	id: string,
 	category: TriageClassification['category'],
@@ -176,6 +178,7 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 		autoRecyclingCount: 1,
 		isHighVolumeOverflow: false,
 		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: {
 			gmailUsedBytes: 4 * 1024 * 1024 * 1024,
 			gmailTotalBytes: 15 * 1024 * 1024 * 1024,
@@ -265,6 +268,7 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 		autoRecyclingCount: 1,
 		isHighVolumeOverflow: false,
 		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: {
 			gmailUsedBytes: 4 * 1024 * 1024 * 1024,
 			gmailTotalBytes: 15 * 1024 * 1024 * 1024,
@@ -312,6 +316,7 @@ test('composeDigestBody displays high volume overflow banner when triggered', ()
 		autoRecyclingCount: 0,
 		isHighVolumeOverflow: true,
 		isDryRun: true,
+		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: {
 			gmailUsedBytes: 0,
 			gmailTotalBytes: 0,
@@ -347,6 +352,7 @@ test('composeDigestBody formats triage/unknown section for unclassifiable mail',
 		autoRecyclingCount: 0,
 		isHighVolumeOverflow: false,
 		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: {
 			gmailUsedBytes: 0,
 			gmailTotalBytes: 0,
@@ -369,6 +375,7 @@ test('sendDigest dispatches email with correct recipient, subject, and content',
 		autoRecyclingCount: 0,
 		isHighVolumeOverflow: false,
 		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: {
 			gmailUsedBytes: 0,
 			gmailTotalBytes: 0,
@@ -417,6 +424,7 @@ test('renders effective duplicates in plain text and html when present', () => {
 		autoRecyclingCount: 0,
 		isHighVolumeOverflow: false,
 		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: {
 			gmailUsedBytes: 0,
 			gmailTotalBytes: 0,
@@ -459,6 +467,7 @@ test('does not render effective duplicates when list is empty or undefined', () 
 		autoRecyclingCount: 0,
 		isHighVolumeOverflow: false,
 		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: {
 			gmailUsedBytes: 0,
 			gmailTotalBytes: 0,
@@ -472,4 +481,42 @@ test('does not render effective duplicates when list is empty or undefined', () 
 
 	const html = composeDigestHtml(data);
 	assert.ok(!html.includes('Effective duplicates:'));
+});
+
+test('composeDigestBody includes the Actions Page link near the top', () => {
+	const data: DailyDigestData = {
+		date: new Date('2026-09-11'),
+		processedCount: 0,
+		dailyLimit: 50,
+		actionRequiredCount: 0,
+		autoRecyclingCount: 0,
+		isHighVolumeOverflow: false,
+		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
+		storage: { gmailUsedBytes: 0, gmailTotalBytes: 0, estimatedRecycleBytes: 0 },
+		entries: [],
+	};
+
+	const body = composeDigestBody(data);
+	assert.ok(body.includes(`Review & take action: ${TEST_ACTIONS_URL}`));
+});
+
+test('composeDigestHtml renders the Actions Page link as a larger-font link that opens in a new tab', () => {
+	const data: DailyDigestData = {
+		date: new Date('2026-09-11'),
+		processedCount: 0,
+		dailyLimit: 50,
+		actionRequiredCount: 0,
+		autoRecyclingCount: 0,
+		isHighVolumeOverflow: false,
+		isDryRun: false,
+		actionsPageUrl: TEST_ACTIONS_URL,
+		storage: { gmailUsedBytes: 0, gmailTotalBytes: 0, estimatedRecycleBytes: 0 },
+		entries: [],
+	};
+
+	const html = composeDigestHtml(data);
+	assert.ok(html.includes(`href="${TEST_ACTIONS_URL}"`));
+	assert.ok(html.includes('target="_blank"'));
+	assert.ok(html.includes('font-size:17px'));
 });

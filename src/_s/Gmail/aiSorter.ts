@@ -35,6 +35,7 @@ export interface AiSorterPipelineOptions {
 	storageProvider?: StorageProvider;
 	emailSender?: EmailSender;
 	recipient?: string;
+	actionsPageUrl?: string;
 	random?: () => number;
 }
 
@@ -134,6 +135,7 @@ export const runAiSorterPipeline = (
 		autoRecyclingCount,
 		isHighVolumeOverflow: cascadeResult.isHighVolumeOverflow,
 		isDryRun: dryRun,
+		actionsPageUrl: options.actionsPageUrl ?? '',
 		storage: storageMetrics,
 		entries: displayEntries,
 	};
