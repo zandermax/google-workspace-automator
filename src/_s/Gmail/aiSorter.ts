@@ -9,6 +9,7 @@ import {
 	type SearchFunction,
 } from '../../Gmail/cascadeSelection';
 import { determineTriageDirectives } from '../../Gmail/actionRules';
+import { getActionsPageUrl, type ActionsPageUrlProvider } from '../../Gmail/actionsPageUrlProvider';
 import {
 	executeTriageActions,
 	type ActionExecutionResult,
@@ -36,6 +37,7 @@ export interface AiSorterPipelineOptions {
 	emailSender?: EmailSender;
 	recipient?: string;
 	random?: () => number;
+	actionsPageUrlProvider?: ActionsPageUrlProvider;
 }
 
 export interface AiSorterPipelineResult {
@@ -59,6 +61,8 @@ export const runAiSorterPipeline = (
 			`Starting AI email sorter pipeline (dryRun: ${dryRun}, limit: ${dailyLimit})...`
 		);
 	}
+
+	const actionsPageUrl = getActionsPageUrl(options.actionsPageUrlProvider);
 
 	// 1. Fetch cascade selection
 	const cascadeResult = selectCascadeThreads<ThreadLike>({
@@ -134,7 +138,7 @@ export const runAiSorterPipeline = (
 		autoRecyclingCount,
 		isHighVolumeOverflow: cascadeResult.isHighVolumeOverflow,
 		isDryRun: dryRun,
-		actionsPageUrl: '',
+		actionsPageUrl,
 		storage: storageMetrics,
 		entries: displayEntries,
 	};

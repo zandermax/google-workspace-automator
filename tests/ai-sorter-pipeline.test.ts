@@ -80,6 +80,9 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 		dryRun: true,
 		dailyLimit: 10,
 		geminiClient,
+		actionsPageUrlProvider: {
+			getActionsPageUrl: () => 'https://script.google.com/macros/s/test-deployment/exec',
+		},
 		search: (query) => {
 			if (query === CASCADE_QUERIES.unreadInbox) {
 				return [t1, t2];
@@ -111,6 +114,11 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 	assert.ok(sentEmail?.body.includes('Lunch tomorrow'));
 	assert.ok(sentEmail?.body.includes('📰 NEWSLETTERS'));
 	assert.ok(sentEmail?.body.includes('Weekly Digest'));
+	assert.ok(
+		sentEmail?.body.includes(
+			'https://script.google.com/macros/s/test-deployment/exec'
+		)
+	);
 });
 
 test('runAiSorterPipeline handles empty inbox run gracefully', () => {
@@ -124,6 +132,9 @@ test('runAiSorterPipeline handles empty inbox run gracefully', () => {
 		dryRun: false,
 		dailyLimit: 50,
 		geminiClient,
+		actionsPageUrlProvider: {
+			getActionsPageUrl: () => 'https://script.google.com/macros/s/test-deployment/exec',
+		},
 		search: () => [],
 		storageProvider: {
 			getStorageUsed: () => 0,
@@ -184,8 +195,9 @@ test('runAiSorterPipeline groups duplicate threads in digest while processing bo
 	const result = runAiSorterPipeline({
 		dryRun: true,
 		dailyLimit: 10,
-		geminiClient,
-		search: (query) => {
+		geminiClient,		actionsPageUrlProvider: {
+			getActionsPageUrl: () => 'https://script.google.com/macros/s/test-deployment/exec',
+		},		search: (query) => {
 			if (query === CASCADE_QUERIES.unreadInbox) {
 				return [t1, t2];
 			}
