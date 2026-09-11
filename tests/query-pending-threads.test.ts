@@ -11,13 +11,15 @@ const createThread = (
 	subject: string,
 	sender: string,
 	labels: string[],
-	lastMessageDate: Date
+	lastMessageDate: Date,
+	inInbox = true
 ): PendingThreadLike => ({
 	getId: () => id,
 	getFirstMessageSubject: () => subject,
 	getLastMessageDate: () => lastMessageDate,
 	getLabels: () => labels.map((name) => ({ getName: () => name })),
 	getMessages: () => [{ getFrom: () => sender }],
+	isInInbox: () => inInbox,
 });
 
 test('queryPendingThreads resolves category from thread labels and computes age in days', () => {
@@ -58,13 +60,36 @@ test('queryPendingThreads falls back to triage/unknown when no category label is
 	assert.equal(items[0].ageInDays, 0);
 });
 
-test('queryPendingThreads sorts oldest first', () => {
+test('queryPendingThreads sorts oldest first within the same inbox partition', () => {
 	const now = new Date('2026-09-11T00:00:00Z');
-	const newer = createThread('newer', 'Newer', 'a@b.com', ['triage/personal'], new Date('2026-09-10T00:00:00Z'));
-	const older = createThread('older', 'Older', 'a@b.com', ['triage/personal'], new Date('2026-09-01T00:00:00Z'));
+	const newer = createThread('newer', 'Newer', 'a@b.com', ['triage/personal'], new Date('2026-09-10T00:00:00Z'), true);
+	const older = createThread('older', 'Older', 'a@b.com', ['triage/personal'], new Date('2026-09-01T00:00:00Z'), true);
 
 	const items = queryPendingThreads(() => [newer, older], now);
 	assert.deepEqual(items.map((i) => i.threadId), ['older', 'newer']);
+});
+
+test('queryPendingThreads sorts non-inbox threads before inbox threads regardless of age', () => {
+	const now = new Date('2026-09-11T00:00:00Z');
+	const newerNonInbox = createThread(
+		'newer-archived',
+		'Newer archived',
+		'a@b.com',
+		['triage/personal'],
+		new Date('2026-09-10T00:00:00Z'),
+		false
+	);
+	const olderInInbox = createThread(
+		'older-inbox',
+		'Older inbox',
+		'a@b.com',
+		['triage/personal'],
+		new Date('2026-09-01T00:00:00Z'),
+		true
+	);
+
+	const items = queryPendingThreads(() => [olderInInbox, newerNonInbox], now);
+	assert.deepEqual(items.map((i) => i.threadId), ['newer-archived', 'older-inbox']);
 });
 
 test('groupPendingItemsByCategory groups by category in TRIAGE_CATEGORIES order and omits empty categories', () => {

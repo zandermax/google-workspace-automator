@@ -10,6 +10,7 @@ export interface PendingThreadLike {
 	getLastMessageDate(): Date;
 	getLabels(): Array<{ getName(): string }>;
 	getMessages(): Array<{ getFrom(): string }>;
+	isInInbox(): boolean;
 }
 
 export interface PendingItem {
@@ -50,6 +51,9 @@ const resolveCategory = (thread: PendingThreadLike): TriageCategory => {
 
 const daysSince = (date: Date, now: Date): number =>
 	Math.max(0, Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)));
+// Threads already moved out of the inbox sort first, so users see nagging reminders
+// to finish clearing the label on items they've already actioned natively in Gmail.
+const inboxPartitionRank = (inInbox: boolean): number => (inInbox ? 1 : 0);
 
 export const queryPendingThreads = (
 	search: PendingThreadSearchFunction = defaultSearch,
@@ -57,20 +61,27 @@ export const queryPendingThreads = (
 ): PendingItem[] => {
 	const threads = search();
 
-	const items: PendingItem[] = threads.map((thread) => {
+	const ranked = threads.map((thread) => {
 		const messages = thread.getMessages();
 		const lastMessage = messages[messages.length - 1];
 
-		return {
+		const item: PendingItem = {
 			threadId: thread.getId(),
 			category: resolveCategory(thread),
 			subject: thread.getFirstMessageSubject(),
 			sender: lastMessage ? lastMessage.getFrom() : '',
 			ageInDays: daysSince(thread.getLastMessageDate(), now),
 		};
+
+		return { item, inInbox: thread.isInInbox() };
 	});
 
-	return items.sort((a, b) => b.ageInDays - a.ageInDays);
+	ranked.sort((a, b) => {
+		const partitionDiff = inboxPartitionRank(a.inInbox) - inboxPartitionRank(b.inInbox);
+		return partitionDiff !== 0 ? partitionDiff : b.item.ageInDays - a.item.ageInDays;
+	});
+
+	return ranked.map((r) => r.item);
 };
 
 export const groupPendingItemsByCategory = (
