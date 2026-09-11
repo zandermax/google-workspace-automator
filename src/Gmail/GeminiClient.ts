@@ -366,6 +366,11 @@ export const validateClassificationResponse = (
 			throw new Error(`Item with id "${id}" has non-string keyDetail field.`);
 		}
 
+		const duplicateOfId =
+			typeof (item as Record<string, unknown>).duplicateOfId === 'string'
+				? ((item as Record<string, unknown>).duplicateOfId as string)
+				: undefined;
+
 		classifications.push({
 			id,
 			category: normalizedCategory as (typeof TRIAGE_CATEGORIES)[number],
@@ -374,6 +379,7 @@ export const validateClassificationResponse = (
 			summary,
 			highlights,
 			keyDetail,
+			...(duplicateOfId ? { duplicateOfId } : {}),
 		});
 	}
 

@@ -142,3 +142,87 @@ test('runAiSorterPipeline handles empty inbox run gracefully', () => {
 	assert.equal(result.autoRecyclingCount, 0);
 	assert.equal(emailSent, true);
 });
+
+test('runAiSorterPipeline groups duplicate threads in digest while processing both in execution', () => {
+	const t1 = createMockThread('mock-thread-1', 'Team Sync Reminder 1', 'calendar@work.com', 'Sync reminder 1');
+	const t2 = createMockThread('mock-thread-2', 'Team Sync Reminder 2', 'calendar@work.com', 'Sync reminder 2');
+
+	const geminiClassifications = [
+		{
+			id: 'mock-thread-1',
+			category: 'triage/personal',
+			timeSensitive: false,
+			actionRequired: false,
+			summary: 'Initial team sync reminder.',
+			highlights: ['Sync at 10am'],
+			keyDetail: '10am',
+		},
+		{
+			id: 'mock-thread-2',
+			category: 'triage/personal',
+			timeSensitive: false,
+			actionRequired: false,
+			summary: 'Duplicate team sync reminder.',
+			highlights: ['Sync reminder follow-up'],
+			keyDetail: '10am',
+			duplicateOfId: 'mock-thread-1',
+		},
+	];
+
+	const geminiClient = new GeminiClient({
+		apiKey: 'test-key',
+		transport: createMockGeminiTransport(geminiClassifications),
+	});
+
+	let sentEmail: {
+		recipient: string;
+		subject: string;
+		body: string;
+		options?: { htmlBody?: string };
+	} | null = null;
+
+	const result = runAiSorterPipeline({
+		dryRun: true,
+		dailyLimit: 10,
+		geminiClient,
+		search: (query) => {
+			if (query === CASCADE_QUERIES.unreadInbox) {
+				return [t1, t2];
+			}
+			return [];
+		},
+		storageProvider: {
+			getStorageUsed: () => 1 * 1024 * 1024 * 1024,
+			getStorageLimit: () => 15 * 1024 * 1024 * 1024,
+		},
+		recipient: 'owner@example.com',
+		emailSender: {
+			sendEmail: (recipient, subject, body, options) => {
+				sentEmail = { recipient, subject, body, options };
+			},
+		},
+	});
+
+	// Both emails must be processed and executed
+	assert.equal(result.processedCount, 2);
+	assert.equal(result.executionResult.processedCount, 2);
+
+	// Sent digest verification
+	assert.ok(sentEmail !== null);
+	const html = sentEmail?.options?.htmlBody ?? '';
+
+	// Category card for personal exists
+	assert.ok(html.includes('PERSONAL'));
+
+	// Only 1 primary item displayed in personal category (not 2 separate items)
+	// Both threads had subject containing 'Team Sync Reminder'
+	// One is primary, the other is in 'Effective duplicates'
+	assert.ok(html.includes('Effective duplicates:'));
+	assert.ok(html.includes('Team Sync Reminder 2'));
+	assert.ok(html.includes('https://mail.google.com/mail/u/0/#all/mock-thread-2'));
+
+	// Check that there is only 1 primary card item in category
+	// In html, each primary item has: <div style="font-size:14px;margin-top:2px;">
+	const primaryItemMatches = html.match(/<div style="font-size:14px;margin-top:2px;">/g);
+	assert.equal(primaryItemMatches?.length, 1);
+});
