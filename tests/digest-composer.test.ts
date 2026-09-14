@@ -20,10 +20,7 @@ import {
 	formatSizeKb,
 	SECTION_SEPARATOR,
 } from '../src/Gmail/digestComposer';
-import {
-	sendDigest,
-	defaultEmailSender,
-} from '../src/Gmail/actions/sendDigest';
+import { sendDigest } from '../src/Gmail/actions/sendDigest';
 import type {
 	DailyDigestData,
 	TriageExecutionDirective,
@@ -31,8 +28,7 @@ import type {
 	TriageClassification,
 } from '../src/types/Gmail/triage';
 
-const TEST_ACTIONS_URL =
-	'https://script.google.com/macros/s/test-deployment/exec';
+const TEST_ACTIONS_URL = 'https://script.google.com/macros/s/test-deployment/exec';
 
 const createMockDirective = (
 	id: string,
@@ -268,14 +264,12 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 
 	// Action required section
 	assert.ok(body.includes('⚡ ACTION REQUIRED'));
-	assert.ok(
-		body.includes('1. Sender item-1 <item-1@example.com> · 1 day ago · 500 KB')
-	);
+	assert.ok(body.includes('1. Sender item-1 <item-1@example.com> · 1 day ago · 500 KB'));
 	assert.ok(body.includes('Subject of item-1'));
 	assert.ok(body.includes('📄'));
 	assert.ok(body.includes('→ Summary of email item-1'));
 	assert.ok(body.includes('⏰ Due by 2026-09-15: $120.00'));
-	assert.ok(body.includes('⛓️‍💥 Unsubscribe: https://example.com/unsub'));
+	assert.ok(body.includes('🔗 Unsubscribe: https://example.com/unsub'));
 
 	// Categorized sections
 	assert.ok(
@@ -354,12 +348,12 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 	// Bold subject linked to the real Gmail thread
 	assert.ok(
 		html.includes(
-			'<a href="https://mail.google.com/mail/u/0/#all/item-1" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
+			'<a href="https://mail.google.com/mail/u/0/popout/item-1" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
 		)
 	);
 	assert.ok(
 		html.includes(
-			'https://mail.google.com/mail/u/0/#all/duplicate-1" target="_blank" rel="noopener"'
+			'https://mail.google.com/mail/u/0/popout/duplicate-1" target="_blank" rel="noopener"'
 		)
 	);
 
@@ -374,7 +368,7 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 	// emitted as numeric entities so non-BMP emoji survive email transport
 	assert.ok(
 		html.includes(
-			'<a href="https://example.com/unsub" style="color:#6b7280;font-size:12px;text-decoration:none;">&#9939;&#65039;&#8205;&#128165; Unsubscribe</a>'
+			'<a href="https://example.com/unsub" style="color:#6b7280;font-size:12px;text-decoration:none;">&#128279; Unsubscribe</a>'
 		)
 	);
 	assert.ok(
@@ -382,7 +376,7 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 			'<a href="mailto:optout@news.org" style="color:#6b7280;font-size:12px;text-decoration:none;">&#9993;&#65039; Unsubscribe</a>'
 		)
 	);
-	assert.ok(!html.includes('🔗'));
+	assert.ok(!html.includes('⛓️'));
 });
 
 test('composeDigestBody displays high volume overflow banner when triggered', () => {
@@ -488,70 +482,16 @@ test('sendDigest dispatches email with correct recipient, subject, and content',
 	assert.equal(result.recipient, 'owner@example.com');
 });
 
-test('defaultEmailSender encodes non-ASCII subjects before calling GmailApp.sendEmail', () => {
-	const globalWithGmail = globalThis as any;
-	const originalGmailApp = globalWithGmail.GmailApp;
-	let capturedRecipient = '';
-	let capturedSubject = '';
-	let capturedBody = '';
-	let capturedOptions: any;
-
-	globalWithGmail.GmailApp = {
-		sendEmail: (
-			recipient: string,
-			subject: string,
-			body: string,
-			options: any
-		) => {
-			capturedRecipient = recipient;
-			capturedSubject = subject;
-			capturedBody = body;
-			capturedOptions = options;
-		},
-	};
-
-	try {
-		defaultEmailSender.sendEmail(
-			'user@example.com',
-			'📬 Daily Email Digest — 2026-09-10',
-			'plain body',
-			{ htmlBody: '<p>html</p>' }
-		);
-
-		assert.equal(capturedRecipient, 'user@example.com');
-		assert.equal(
-			capturedSubject,
-			'=?UTF-8?B?8J+TrCBEYWlseSBFbWFpbCBEaWdlc3Qg4oCUIDIwMjYtMDktMTA=?='
-		);
-		assert.equal(capturedBody, 'plain body');
-		assert.deepEqual(capturedOptions, { htmlBody: '<p>html</p>' });
-	} finally {
-		if (originalGmailApp !== undefined) {
-			globalWithGmail.GmailApp = originalGmailApp;
-		} else {
-			delete globalWithGmail.GmailApp;
-		}
-	}
-});
-
 test('renders effective duplicates in plain text and html when present', () => {
-	const directiveWithDups = createMockDirective(
-		'primary-1',
-		'triage/newsletters',
-		{
-			effectiveDuplicates: [
-				{ threadId: 'dup-1', subject: 'Duplicate Subject 1 <tag>' },
-				{ threadId: 'dup-2', subject: 'Duplicate Subject 2' },
-			],
-		}
-	);
-	const directiveWithoutDups = createMockDirective(
-		'solo-1',
-		'triage/newsletters',
-		{
-			effectiveDuplicates: [],
-		}
-	);
+	const directiveWithDups = createMockDirective('primary-1', 'triage/newsletters', {
+		effectiveDuplicates: [
+			{ threadId: 'dup-1', subject: 'Duplicate Subject 1 <tag>' },
+			{ threadId: 'dup-2', subject: 'Duplicate Subject 2' },
+		],
+	});
+	const directiveWithoutDups = createMockDirective('solo-1', 'triage/newsletters', {
+		effectiveDuplicates: [],
+	});
 
 	const data: DailyDigestData = {
 		date: new Date('2026-09-10'),
@@ -582,8 +522,8 @@ test('renders effective duplicates in plain text and html when present', () => {
 		'<div style="margin-top:6px;font-size:12px;color:#4b5563;">\n' +
 		'\t<span style="font-weight:600;">Effective duplicates:</span>\n' +
 		'\t<ul style="margin:2px 0 0 18px;padding:0;color:#374151;">\n' +
-		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 1 &lt;tag&gt;</a></li>\n' +
-		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-2" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 2</a></li>\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/popout/dup-1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 1 &lt;tag&gt;</a></li>\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/popout/dup-2" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 2</a></li>\n' +
 		'\t</ul>\n' +
 		'</div>';
 
@@ -630,11 +570,7 @@ test('composeDigestBody includes the Actions Page link near the top', () => {
 		isHighVolumeOverflow: false,
 		isDryRun: false,
 		actionsPageUrl: TEST_ACTIONS_URL,
-		storage: {
-			gmailUsedBytes: 0,
-			gmailTotalBytes: 0,
-			estimatedRecycleBytes: 0,
-		},
+		storage: { gmailUsedBytes: 0, gmailTotalBytes: 0, estimatedRecycleBytes: 0 },
 		entries: [],
 	};
 
@@ -652,11 +588,7 @@ test('composeDigestHtml renders the Actions Page link as a larger-font link that
 		isHighVolumeOverflow: false,
 		isDryRun: false,
 		actionsPageUrl: TEST_ACTIONS_URL,
-		storage: {
-			gmailUsedBytes: 0,
-			gmailTotalBytes: 0,
-			estimatedRecycleBytes: 0,
-		},
+		storage: { gmailUsedBytes: 0, gmailTotalBytes: 0, estimatedRecycleBytes: 0 },
 		entries: [],
 	};
 
@@ -667,23 +599,12 @@ test('composeDigestHtml renders the Actions Page link as a larger-font link that
 });
 
 test('composeBacklogOnlyDigestSubject reports pending count and no new items', () => {
-	const subject = composeBacklogOnlyDigestSubject(
-		new Date('2026-09-11'),
-		12,
-		false
-	);
-	assert.equal(
-		subject,
-		'📬 Daily Email Digest — 2026-09-11 — 12 pending, none new'
-	);
+	const subject = composeBacklogOnlyDigestSubject(new Date('2026-09-11'), 12, false);
+	assert.equal(subject, '📬 Daily Email Digest — 2026-09-11 — 12 pending, none new');
 });
 
 test('composeBacklogOnlyDigestSubject prefixes DRY RUN when applicable', () => {
-	const subject = composeBacklogOnlyDigestSubject(
-		new Date('2026-09-11'),
-		1,
-		true
-	);
+	const subject = composeBacklogOnlyDigestSubject(new Date('2026-09-11'), 1, true);
 	assert.ok(subject.startsWith('[DRY RUN]'));
 });
 

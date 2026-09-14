@@ -11,7 +11,10 @@ import {
 	formatUsagePercent,
 } from './StorageStats';
 import { escapeHtml, toHtmlNumericEntities } from '../helpers/html';
-import { allocateSlotBudget, resolveSlotPercentages } from './cascadeSelection';
+import {
+	allocateSlotBudget,
+	resolveSlotPercentages,
+} from './cascadeSelection';
 
 const HTML_FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -94,9 +97,9 @@ export const CATEGORY_METADATA: Record<TriageCategory, CategoryMetadata> = {
 export const ACTION_REQUIRED_ACCENT = { accent: '#dc2626', tint: '#fef2f2' };
 export const RECYCLING_ACCENT = { accent: '#6b7280', tint: '#f9fafb' };
 
-/** Builds a Gmail deep link that opens a thread from any label (including All Mail). */
+/** Builds a Gmail popout link that opens an email in its own browser tab. */
 export const buildThreadLink = (threadId: string): string =>
-	`https://mail.google.com/mail/u/0/#all/${threadId}`;
+	`https://mail.google.com/mail/u/0/popout/${threadId}`;
 
 export const formatIsoDate = (date: Date): string => {
 	const year = date.getFullYear();
@@ -135,7 +138,9 @@ export const formatRelativeAge = (ageInDays: number): string => {
 	const yearLabel = `${years} year${years === 1 ? '' : 's'}`;
 	const monthLabel = `${months} month${months === 1 ? '' : 's'}`;
 
-	return months === 0 ? `${yearLabel} ago` : `${yearLabel}, ${monthLabel} ago`;
+	return months === 0
+		? `${yearLabel} ago`
+		: `${yearLabel}, ${monthLabel} ago`;
 };
 
 export const formatSizeKb = (sizeKb: number): string => {
@@ -188,7 +193,7 @@ const renderEmailItem = (
 	}
 
 	if (email.unsubscribeUrl) {
-		lines.push(`   ⛓️‍💥 Unsubscribe: ${email.unsubscribeUrl}`);
+		lines.push(`   🔗 Unsubscribe: ${email.unsubscribeUrl}`);
 	} else if (email.unsubscribeMailto) {
 		lines.push(`   ✉️ Unsubscribe: ${email.unsubscribeMailto}`);
 	}
@@ -398,8 +403,7 @@ const renderEmailItemHtml = (
 	const highlightsHtml = classification.highlights
 		.filter((highlight) => highlight.trim())
 		.map(
-			(highlight) =>
-				`<li style="margin:2px 0;">${escapeHtml(highlight.trim())}</li>`
+			(highlight) => `<li style="margin:2px 0;">${escapeHtml(highlight.trim())}</li>`
 		)
 		.join('');
 
@@ -429,7 +433,7 @@ const renderEmailItemHtml = (
 
 	let unsubscribeHtml = '';
 	if (email.unsubscribeUrl) {
-		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeUrl)}" style="color:#6b7280;font-size:12px;text-decoration:none;">⛓️‍💥 Unsubscribe</a></div>`;
+		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeUrl)}" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a></div>`;
 	} else if (email.unsubscribeMailto) {
 		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeMailto)}" style="color:#6b7280;font-size:12px;text-decoration:none;">✉️ Unsubscribe</a></div>`;
 	}
