@@ -189,6 +189,10 @@ test('digestComposer formatting helpers format dates, ages, and sizes', () => {
 	assert.equal(formatRelativeAge(21), '3 weeks ago');
 	assert.equal(formatRelativeAge(45), '1 month ago');
 	assert.equal(formatRelativeAge(90), '3 months ago');
+	assert.equal(formatRelativeAge(360), '1 year ago');
+	assert.equal(formatRelativeAge(390), '1 year, 1 month ago');
+	assert.equal(formatRelativeAge(720), '2 years ago');
+	assert.equal(formatRelativeAge(4110), '11 years, 5 months ago');
 
 	assert.equal(formatSizeKb(350), '350 KB');
 	assert.equal(formatSizeKb(2400), '2.3 MB');

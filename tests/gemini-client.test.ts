@@ -62,7 +62,6 @@ test('GeminiClient defaults to gemini-3.8-flash and accepts custom model', () =>
 	assert.deepEqual(DEFAULT_FALLBACK_MODELS, [
 		'gemini-3.8-flash',
 		'gemini-3.7-flash',
-		'gemini-3.8-flash-lite',
 		'gemini-3.5-flash-lite',
 	]);
 	assert.deepEqual(GEMINI_FALLBACK_MODELS, DEFAULT_FALLBACK_MODELS);
@@ -268,14 +267,14 @@ test('GeminiClient falls back if model returns 404 Not Found', () => {
 
 	const client = new GeminiClient({
 		apiKey: 'test-key',
-		fallbackModels: ['gemini-3.8-flash-lite', 'gemini-3.5-flash-lite'],
+		fallbackModels: ['gemini-3.6-flash-lite', 'gemini-3.5-flash-lite'],
 		onFallback: (failedModel, nextModel) => {
 			loggedFallbacks.push({ failedModel, nextModel });
 		},
 		transport: {
 			fetch(url: string) {
 				calls.push(url);
-				if (url.includes('models/gemini-3.8-flash-lite:generateContent')) {
+				if (url.includes('models/gemini-3.6-flash-lite:generateContent')) {
 					return {
 						getResponseCode: () => 404,
 						getContentText: () =>
@@ -283,7 +282,7 @@ test('GeminiClient falls back if model returns 404 Not Found', () => {
 								error: {
 									code: 404,
 									message:
-										'models/gemini-3.8-flash-lite is not found for API version v1beta',
+										'models/gemini-3.6-flash-lite is not found for API version v1beta',
 									status: 'NOT_FOUND',
 								},
 							}),
@@ -305,7 +304,7 @@ test('GeminiClient falls back if model returns 404 Not Found', () => {
 	assert.equal(calls.length, 2);
 	assert.deepEqual(loggedFallbacks, [
 		{
-			failedModel: 'gemini-3.8-flash-lite',
+			failedModel: 'gemini-3.6-flash-lite',
 			nextModel: 'gemini-3.5-flash-lite',
 		},
 	]);
@@ -341,7 +340,7 @@ test('selectFlashFallbackModels selects best flash, previous version flash, and 
 			supportedGenerationMethods: ['generateContent'],
 		},
 		{
-			name: 'models/gemini-3.8-flash-lite',
+			name: 'models/gemini-3.5-flash-lite',
 			supportedGenerationMethods: ['generateContent'],
 		},
 		{
@@ -362,7 +361,7 @@ test('selectFlashFallbackModels selects best flash, previous version flash, and 
 	assert.deepEqual(selected, [
 		'gemini-3.8-flash',
 		'gemini-3.7-flash',
-		'gemini-3.8-flash-lite',
+		'gemini-3.5-flash-lite',
 	]);
 });
 
@@ -408,7 +407,7 @@ test('GeminiClient automatically falls back to secondary model on 503 and logs o
 		fallbackModels: [
 			'gemini-3.8-flash',
 			'gemini-3.7-flash',
-			'gemini-3.8-flash-lite',
+			'gemini-3.5-flash-lite',
 		],
 		onFallback: (failedModel, nextModel) => {
 			loggedFallbacks.push({ failedModel, nextModel });
@@ -492,7 +491,7 @@ test('GeminiClient falls back to tertiary flash-lite model if second model also 
 		fallbackModels: [
 			'gemini-3.8-flash',
 			'gemini-3.7-flash',
-			'gemini-3.8-flash-lite',
+			'gemini-3.5-flash-lite',
 		],
 		onFallback: (failedModel, nextModel) => {
 			loggedFallbacks.push({ failedModel, nextModel });
@@ -516,7 +515,7 @@ test('GeminiClient falls back to tertiary flash-lite model if second model also 
 							}),
 					};
 				}
-				if (url.includes('models/gemini-3.8-flash-lite:generateContent')) {
+				if (url.includes('models/gemini-3.5-flash-lite:generateContent')) {
 					return {
 						getResponseCode: () => 200,
 						getContentText: () => validResponse,
@@ -532,7 +531,7 @@ test('GeminiClient falls back to tertiary flash-lite model if second model also 
 	assert.equal(calls.length, 3);
 	assert.deepEqual(loggedFallbacks, [
 		{ failedModel: 'gemini-3.8-flash', nextModel: 'gemini-3.7-flash' },
-		{ failedModel: 'gemini-3.7-flash', nextModel: 'gemini-3.8-flash-lite' },
+		{ failedModel: 'gemini-3.7-flash', nextModel: 'gemini-3.5-flash-lite' },
 	]);
 });
 
@@ -544,7 +543,7 @@ test('GeminiClient throws if all fallback models are unavailable', () => {
 		fallbackModels: [
 			'gemini-3.8-flash',
 			'gemini-3.7-flash',
-			'gemini-3.8-flash-lite',
+			'gemini-3.5-flash-lite',
 		],
 		onFallback: (failedModel, nextModel) => {
 			loggedFallbacks.push({ failedModel, nextModel });
@@ -572,7 +571,7 @@ test('GeminiClient throws if all fallback models are unavailable', () => {
 	);
 	assert.deepEqual(loggedFallbacks, [
 		{ failedModel: 'gemini-3.8-flash', nextModel: 'gemini-3.7-flash' },
-		{ failedModel: 'gemini-3.7-flash', nextModel: 'gemini-3.8-flash-lite' },
+		{ failedModel: 'gemini-3.7-flash', nextModel: 'gemini-3.5-flash-lite' },
 	]);
 });
 

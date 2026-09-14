@@ -127,7 +127,20 @@ export const formatRelativeAge = (ageInDays: number): string => {
 	if (ageInDays < 60) {
 		return '1 month ago';
 	}
-	return `${Math.floor(ageInDays / 30)} months ago`;
+
+	const totalMonths = Math.floor(ageInDays / 30);
+	if (totalMonths < 12) {
+		return `${totalMonths} months ago`;
+	}
+
+	const years = Math.floor(totalMonths / 12);
+	const months = totalMonths % 12;
+	const yearLabel = `${years} year${years === 1 ? '' : 's'}`;
+	const monthLabel = `${months} month${months === 1 ? '' : 's'}`;
+
+	return months === 0
+		? `${yearLabel} ago`
+		: `${yearLabel}, ${monthLabel} ago`;
 };
 
 export const formatSizeKb = (sizeKb: number): string => {
