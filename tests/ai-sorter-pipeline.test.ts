@@ -113,7 +113,7 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 	assert.ok(sentEmail?.subject.includes('[DRY RUN] 📬 Daily Email Digest'));
 	assert.ok(sentEmail?.body.includes('⚡ ACTION REQUIRED'));
 	assert.ok(sentEmail?.body.includes('Lunch tomorrow'));
-	assert.ok(sentEmail?.body.includes('📰 NEWSLETTERS'));
+	assert.ok(sentEmail?.body.includes('🕰️ RECYCLING IN 7 DAYS'));
 	assert.ok(sentEmail?.body.includes('Weekly Digest'));
 	assert.ok(
 		sentEmail?.body.includes(

@@ -261,9 +261,11 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 	assert.ok(body.includes('🗄️ Storage'));
 	assert.ok(body.includes('- Google Account used: 4 GB / 15 GB (27%)'));
 	assert.ok(body.includes('- Free space: 11 GB'));
+	assert.ok(body.includes('TRIAGE'));
+	assert.ok(body.includes('DAILY DIGEST'));
 
 	// Action required section
-	assert.ok(body.includes('⚡ ACTION REQUIRED'));
+	assert.ok(body.includes('⚡ ACTION REQUIRED  (1 · 0.5 MB total)'));
 	assert.ok(body.includes('1. Sender item-1 <item-1@example.com> · 1 day ago · 500 KB'));
 	assert.ok(body.includes('Subject of item-1'));
 	assert.ok(body.includes('📄'));
@@ -274,19 +276,10 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 	// Categorized sections
 	assert.ok(
 		body.includes(
-			'💳 FINANCE  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Ffinance'
+			'👤 PERSONAL  (1 · < 0.1 MB total)  → https://mail.google.com/mail/u/0/#label/triage%2Fpersonal'
 		)
 	);
-	assert.ok(
-		body.includes(
-			'👤 PERSONAL  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Fpersonal'
-		)
-	);
-	assert.ok(
-		body.includes(
-			'📰 NEWSLETTERS  (1)  → https://mail.google.com/mail/u/0/#label/triage%2Fnewsletters'
-		)
-	);
+	assert.ok(body.includes('1. Sender item-3 <item-3@example.com>'));
 	assert.ok(body.includes('📷 📎'));
 	assert.ok(body.includes('✉️ Unsubscribe: mailto:optout@news.org'));
 
@@ -298,10 +291,10 @@ test('composeDigestBody formats complete digest with all sections, attachments, 
 			'[Rescue any thread before deletion by removing the Auto-Recycle/7d label in Gmail]'
 		)
 	);
-	// Numbering restarts per section (recycling section reuses newsletters' item-2)
+	// Each picked email is rendered once and numbering continues globally.
 	assert.ok(
 		body.includes(
-			'1. Sender item-2 <item-2@example.com> · 3 days ago · triage/newsletters · 1.2 MB'
+			'3. Sender item-2 <item-2@example.com> · 3 days ago · triage/newsletters · 1.2 MB'
 		)
 	);
 });
@@ -357,12 +350,18 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 		)
 	);
 
-	// Numbering restarts per section/card
+	// Numbering continues globally across sections/cards
 	assert.ok(html.includes('1. Sender item-1'));
-	assert.ok(html.includes('1. Sender item-2'));
+	assert.ok(html.includes('2. Sender item-2'));
+	assert.ok(html.includes('TRIAGE'));
+	assert.ok(html.includes('DAILY DIGEST'));
+	assert.ok(html.includes('<hr style="border:0;border-top:1px solid #d1d5db;'));
+	assert.ok(html.includes('Action Required (1 &#183; 0.5 MB total)'));
+	assert.ok(html.includes('Recycling in 7 Days (1 &#183; 1.2 MB total)'));
 
-	// Category card uses its accent color
-	assert.ok(html.includes('border-left:4px solid #059669'));
+	// Triage and daily digest cards use their section accent colors
+	assert.ok(html.includes('border-left:4px solid #dc2626'));
+	assert.ok(html.includes('border-left:4px solid #6b7280'));
 
 	// Unsubscribe links hide the raw URL and keep distinct icons for link vs mailto,
 	// emitted as numeric entities so non-BMP emoji survive email transport
@@ -571,11 +570,11 @@ test('composeDigestBody includes the Actions Page link near the top', () => {
 		isDryRun: false,
 		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: { gmailUsedBytes: 0, gmailTotalBytes: 0, estimatedRecycleBytes: 0 },
-		entries: [],
+		entries: [createMockDirective('triage-1', 'triage/personal')],
 	};
 
 	const body = composeDigestBody(data);
-	assert.ok(body.includes(`Review & take action: ${TEST_ACTIONS_URL}`));
+	assert.ok(body.includes(`Review 1 triage email: ${TEST_ACTIONS_URL}`));
 });
 
 test('composeDigestHtml renders the Actions Page link as a larger-font link that opens in a new tab', () => {
@@ -589,13 +588,14 @@ test('composeDigestHtml renders the Actions Page link as a larger-font link that
 		isDryRun: false,
 		actionsPageUrl: TEST_ACTIONS_URL,
 		storage: { gmailUsedBytes: 0, gmailTotalBytes: 0, estimatedRecycleBytes: 0 },
-		entries: [],
+		entries: [createMockDirective('triage-1', 'triage/personal')],
 	};
 
 	const html = composeDigestHtml(data);
 	assert.ok(html.includes(`href="${TEST_ACTIONS_URL}"`));
 	assert.ok(html.includes('target="_blank"'));
-	assert.ok(html.includes('font-size:17px'));
+	assert.ok(html.includes('Review 1 triage email'));
+	assert.ok(html.includes('font-size:15px'));
 });
 
 test('composeBacklogOnlyDigestSubject reports pending count and no new items', () => {

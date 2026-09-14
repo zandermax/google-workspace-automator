@@ -151,6 +151,11 @@ export const formatSizeKb = (sizeKb: number): string => {
 	return `${sizeKb} KB`;
 };
 
+const formatSectionSize = (items: TriageExecutionDirective[]): string =>
+	formatMegabytes(
+		items.reduce((total, item) => total + (item.email.sizeKb || 0) * 1024, 0)
+	);
+
 const renderEmailItem = (
 	directive: TriageExecutionDirective,
 	options: { includeCategoryInMeta?: boolean; index?: number } = {}
@@ -248,7 +253,6 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 		: `📬 ${DIGEST_SUBJECT_TEXT} — ${dateStr}`;
 
 	lines.push(headerTitle);
-	lines.push(`👉 Review & take action: ${data.actionsPageUrl}`);
 
 	const spaceFreedStr = formatMegabytes(data.storage.estimatedRecycleBytes);
 	lines.push(
@@ -293,18 +297,37 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 		lines.push('');
 	}
 
-	// 1. ACTION REQUIRED Section
+	// 1. DAILY DIGEST Section
 	const actionRequiredItems = data.entries.filter(
 		(e) => e.classification.actionRequired
 	);
+	const categorizedItems = data.entries.filter(
+		(e) => e.recycleLabel === undefined
+	);
+	const recyclingItems = data.entries.filter(
+		(e) => e.recycleLabel !== undefined
+	);
+	let nextDailyDigestNumber = 1;
 	if (actionRequiredItems.length > 0) {
 		lines.push(SECTION_SEPARATOR);
-		lines.push('⚡ ACTION REQUIRED');
+		lines.push('DAILY DIGEST');
+		lines.push(SECTION_SEPARATOR);
+		lines.push('');
+
+		lines.push(SECTION_SEPARATOR);
+		lines.push(
+			`⚡ ACTION REQUIRED  (${actionRequiredItems.length} · ${formatSectionSize(actionRequiredItems)} total)`
+		);
 		lines.push(SECTION_SEPARATOR);
 		lines.push('');
 
 		for (let i = 0; i < actionRequiredItems.length; i += 1) {
-			lines.push(...renderEmailItem(actionRequiredItems[i], { index: i + 1 }));
+			lines.push(
+				...renderEmailItem(actionRequiredItems[i], {
+					index: nextDailyDigestNumber,
+				})
+			);
+			nextDailyDigestNumber += 1;
 			if (i < actionRequiredItems.length - 1) {
 				lines.push('');
 			}
@@ -312,9 +335,22 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 		lines.push('');
 	}
 
+	if (data.entries.length > 0) {
+		lines.push(SECTION_SEPARATOR);
+		lines.push('TRIAGE');
+		lines.push(SECTION_SEPARATOR);
+		lines.push('');
+		lines.push(
+			`👉 Review ${data.entries.length} triage email${data.entries.length === 1 ? '' : 's'}: ${data.actionsPageUrl}`
+		);
+		lines.push('');
+	}
+
+	let nextTriageNumber = 1;
+
 	// 2. CATEGORIZED SECTIONS in priority order
 	for (const category of TRIAGE_CATEGORIES) {
-		const items = data.entries.filter(
+		const items = categorizedItems.filter(
 			(e) => e.classification.category === category
 		);
 		if (items.length === 0) {
@@ -325,12 +361,17 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 		const labelUrl = `https://mail.google.com/mail/u/0/#label/${meta.labelKey}`;
 
 		lines.push(SECTION_SEPARATOR);
-		lines.push(`${meta.icon} ${meta.title}  (${items.length})  → ${labelUrl}`);
+		lines.push(
+			`${meta.icon} ${meta.title}  (${items.length} · ${formatSectionSize(items)} total)  → ${labelUrl}`
+		);
 		lines.push(SECTION_SEPARATOR);
 		lines.push('');
 
 		for (let i = 0; i < items.length; i += 1) {
-			lines.push(...renderEmailItem(items[i], { index: i + 1 }));
+			lines.push(
+				...renderEmailItem(items[i], { index: nextTriageNumber })
+			);
+			nextTriageNumber += 1;
 			if (i < items.length - 1) {
 				lines.push('');
 			}
@@ -339,15 +380,8 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 	}
 
 	// 3. RECYCLING IN 7 DAYS Section
-	const recyclingItems = data.entries.filter(
-		(e) => e.recycleLabel !== undefined
-	);
 	if (recyclingItems.length > 0) {
-		const totalRecycleBytes = recyclingItems.reduce(
-			(acc, e) => acc + (e.email.sizeKb || 0) * 1024,
-			0
-		);
-		const recycleSizeStr = formatMegabytes(totalRecycleBytes);
+		const recycleSizeStr = formatSectionSize(recyclingItems);
 
 		lines.push(SECTION_SEPARATOR);
 		lines.push(
@@ -360,9 +394,10 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 			lines.push(
 				...renderEmailItem(recyclingItems[i], {
 					includeCategoryInMeta: true,
-					index: i + 1,
+					index: nextTriageNumber,
 				})
 			);
+			nextTriageNumber += 1;
 			if (i < recyclingItems.length - 1) {
 				lines.push('');
 			}
@@ -524,13 +559,29 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 	const actionRequiredItems = data.entries.filter(
 		(e) => e.classification.actionRequired
 	);
+	const categorizedItems = data.entries.filter(
+		(e) => e.recycleLabel === undefined
+	);
+	const recyclingItems = data.entries.filter(
+		(e) => e.recycleLabel !== undefined
+	);
+	let nextDailyDigestNumber = 1;
 	if (actionRequiredItems.length > 0) {
+		sections.push(
+			'<div style="font-size:16px;font-weight:700;margin:20px 0 10px 0;">DAILY DIGEST</div>'
+		);
 		const itemsHtml = actionRequiredItems
-			.map((item, i) => renderEmailItemHtml(item, { index: i + 1 }))
+			.map((item) => {
+				const renderedItem = renderEmailItemHtml(item, {
+					index: nextDailyDigestNumber,
+				});
+				nextDailyDigestNumber += 1;
+				return renderedItem;
+			})
 			.join('');
 		sections.push(
 			renderCardHtml(
-				'Action Required',
+				`Action Required (${actionRequiredItems.length} · ${formatSectionSize(actionRequiredItems)} total)`,
 				'⚡',
 				ACTION_REQUIRED_ACCENT.accent,
 				ACTION_REQUIRED_ACCENT.tint,
@@ -539,8 +590,22 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 		);
 	}
 
+	if (data.entries.length > 0) {
+		if (actionRequiredItems.length > 0) {
+			sections.push('<hr style="border:0;border-top:1px solid #d1d5db;margin:20px 0;">');
+		}
+		sections.push(
+			'<div style="font-size:16px;font-weight:700;margin:20px 0 10px 0;">TRIAGE</div>'
+		);
+		sections.push(
+			`<div style="margin-bottom:12px;"><a href="${escapeHtml(data.actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:15px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review ${data.entries.length} triage email${data.entries.length === 1 ? '' : 's'} →</a></div>`
+		);
+	}
+
+	let nextTriageNumber = 1;
+
 	for (const category of TRIAGE_CATEGORIES) {
-		const items = data.entries.filter(
+		const items = categorizedItems.filter(
 			(e) => e.classification.category === category
 		);
 		if (items.length === 0) {
@@ -550,11 +615,17 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 		const meta = CATEGORY_METADATA[category];
 		const labelUrl = `https://mail.google.com/mail/u/0/#label/${meta.labelKey}`;
 		const itemsHtml = items
-			.map((item, i) => renderEmailItemHtml(item, { index: i + 1 }))
+			.map((item) => {
+				const renderedItem = renderEmailItemHtml(item, {
+					index: nextTriageNumber,
+				});
+				nextTriageNumber += 1;
+				return renderedItem;
+			})
 			.join('');
 		sections.push(
 			renderCardHtml(
-				`${meta.title} (${items.length})`,
+				`${meta.title} (${items.length} · ${formatSectionSize(items)} total)`,
 				meta.icon,
 				meta.accent,
 				meta.tint,
@@ -564,20 +635,18 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 		);
 	}
 
-	const recyclingItems = data.entries.filter(
-		(e) => e.recycleLabel !== undefined
-	);
 	let recyclingFooterHtml = '';
 	if (recyclingItems.length > 0) {
-		const totalRecycleBytes = recyclingItems.reduce(
-			(acc, e) => acc + (e.email.sizeKb || 0) * 1024,
-			0
-		);
-		const recycleSizeStr = formatMegabytes(totalRecycleBytes);
+		const recycleSizeStr = formatSectionSize(recyclingItems);
 		const itemsHtml = recyclingItems
-			.map((item, i) =>
-				renderEmailItemHtml(item, { includeCategoryInMeta: true, index: i + 1 })
-			)
+			.map((item) => {
+				const renderedItem = renderEmailItemHtml(item, {
+					includeCategoryInMeta: true,
+					index: nextTriageNumber,
+				});
+				nextTriageNumber += 1;
+				return renderedItem;
+			})
 			.join('');
 		sections.push(
 			renderCardHtml(
@@ -598,7 +667,6 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 
 	return toHtmlNumericEntities(`<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
 	<div style="font-size:20px;font-weight:700;margin-bottom:4px;">${escapeHtml(headerTitle)}</div>
-	<div style="margin-bottom:12px;"><a href="${escapeHtml(data.actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:17px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review &amp; Take Action →</a></div>
 	<div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Processed: ${data.processedCount} / ${data.dailyLimit} &nbsp;·&nbsp; Action needed: ${data.actionRequiredCount} &nbsp;·&nbsp; Auto-recycling: ${data.autoRecyclingCount} &nbsp;·&nbsp; Space freed: ${spaceFreedStr}</div>
 	${storageHtml}
 	${overflowHtml}
