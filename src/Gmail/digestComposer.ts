@@ -468,9 +468,9 @@ const renderEmailItemHtml = (
 
 	let unsubscribeHtml = '';
 	if (email.unsubscribeUrl) {
-		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeUrl)}" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a></div>`;
+		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeUrl)}" target="_blank" rel="noopener" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a></div>`;
 	} else if (email.unsubscribeMailto) {
-		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeMailto)}" style="color:#6b7280;font-size:12px;text-decoration:none;">✉️ Unsubscribe</a></div>`;
+		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeMailto)}" target="_blank" rel="noopener" style="color:#6b7280;font-size:12px;text-decoration:none;">✉️ Unsubscribe</a></div>`;
 	}
 
 	const itemStyle =

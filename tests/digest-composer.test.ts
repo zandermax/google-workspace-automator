@@ -367,12 +367,12 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 	// emitted as numeric entities so non-BMP emoji survive email transport
 	assert.ok(
 		html.includes(
-			'<a href="https://example.com/unsub" style="color:#6b7280;font-size:12px;text-decoration:none;">&#128279; Unsubscribe</a>'
+			'<a href="https://example.com/unsub" target="_blank" rel="noopener" style="color:#6b7280;font-size:12px;text-decoration:none;">&#128279; Unsubscribe</a>'
 		)
 	);
 	assert.ok(
 		html.includes(
-			'<a href="mailto:optout@news.org" style="color:#6b7280;font-size:12px;text-decoration:none;">&#9993;&#65039; Unsubscribe</a>'
+			'<a href="mailto:optout@news.org" target="_blank" rel="noopener" style="color:#6b7280;font-size:12px;text-decoration:none;">&#9993;&#65039; Unsubscribe</a>'
 		)
 	);
 	assert.ok(!html.includes('⛓️'));
