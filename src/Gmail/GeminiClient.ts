@@ -232,14 +232,11 @@ export const buildClassificationResponseSchema = (
 	inputIds: string[]
 ) => ({
 	...CLASSIFICATION_RESPONSE_SCHEMA,
-	minItems: inputIds.length,
-	maxItems: inputIds.length,
 	items: {
 		...CLASSIFICATION_RESPONSE_SCHEMA.items,
 		properties: {
 			...CLASSIFICATION_RESPONSE_SCHEMA.items.properties,
 			id: { type: 'STRING', enum: inputIds },
-			duplicateOfId: { type: 'STRING', enum: inputIds },
 		},
 	},
 });

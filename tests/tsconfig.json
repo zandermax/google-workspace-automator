@@ -1,0 +1,11 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"types": ["node", "gas-types-detailed"],
+		"noEmit": true,
+		"noCheck": true
+	},
+	"include": ["./**/*.ts"]
+}

@@ -186,13 +186,6 @@ test('GeminiClient successfully calls API and parses valid classification batch'
 		parsedBody.generationConfig?.response_schema?.items?.properties?.id?.enum,
 		['thread-1', 'thread-2']
 	);
-	assert.deepEqual(
-		parsedBody.generationConfig?.response_schema?.items?.properties
-			?.duplicateOfId?.enum,
-		['thread-1', 'thread-2']
-	);
-	assert.equal(parsedBody.generationConfig?.response_schema?.minItems, 2);
-	assert.equal(parsedBody.generationConfig?.response_schema?.maxItems, 2);
 });
 
 test('validateClassificationResponse restores the input id when Gemini hallucinates an id', () => {
@@ -262,7 +255,6 @@ test('GeminiClient normalizes unexpected categories to triage/unknown', () => {
 });
 
 test('SYSTEM_INSTRUCTION includes structured few-shot examples for categories', () => {
-	// @ts-expect-error - will check SYSTEM_INSTRUCTION
 	assert.ok(SYSTEM_INSTRUCTION.includes('Examples:'));
 	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/personal"'));
 	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/receipts"'));
