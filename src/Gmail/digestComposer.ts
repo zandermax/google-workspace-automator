@@ -99,7 +99,7 @@ export const RECYCLING_ACCENT = { accent: '#6b7280', tint: '#f9fafb' };
 
 /** Builds a Gmail popout link that opens an email in its own browser tab. */
 export const buildThreadLink = (threadId: string): string =>
-	`https://mail.google.com/mail/u/0/popout/${threadId}`;
+	`https://mail.google.com/mail/u/0/popout?th=%23thread-a:${encodeURIComponent(threadId)}`;
 
 export const formatIsoDate = (date: Date): string => {
 	const year = date.getFullYear();

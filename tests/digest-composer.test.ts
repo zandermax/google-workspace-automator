@@ -341,12 +341,12 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 	// Bold subject linked to the real Gmail thread
 	assert.ok(
 		html.includes(
-			'<a href="https://mail.google.com/mail/u/0/popout/item-1" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
+			'<a href="https://mail.google.com/mail/u/0/popout?th=%23thread-a:item-1" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
 		)
 	);
 	assert.ok(
 		html.includes(
-			'https://mail.google.com/mail/u/0/popout/duplicate-1" target="_blank" rel="noopener"'
+			'https://mail.google.com/mail/u/0/popout?th=%23thread-a:duplicate-1" target="_blank" rel="noopener"'
 		)
 	);
 
@@ -521,8 +521,8 @@ test('renders effective duplicates in plain text and html when present', () => {
 		'<div style="margin-top:6px;font-size:12px;color:#4b5563;">\n' +
 		'\t<span style="font-weight:600;">Effective duplicates:</span>\n' +
 		'\t<ul style="margin:2px 0 0 18px;padding:0;color:#374151;">\n' +
-		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/popout/dup-1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 1 &lt;tag&gt;</a></li>\n' +
-		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/popout/dup-2" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 2</a></li>\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/popout?th=%23thread-a:dup-1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 1 &lt;tag&gt;</a></li>\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/popout?th=%23thread-a:dup-2" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 2</a></li>\n' +
 		'\t</ul>\n' +
 		'</div>';
 

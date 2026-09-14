@@ -236,7 +236,11 @@ test('runAiSorterPipeline groups duplicate threads in digest while processing bo
 	// One is primary, the other is in 'Effective duplicates'
 	assert.ok(html.includes('Effective duplicates:'));
 	assert.ok(html.includes('Team Sync Reminder 2'));
-	assert.ok(html.includes('https://mail.google.com/mail/u/0/popout/mock-thread-2'));
+	assert.ok(
+		html.includes(
+			'https://mail.google.com/mail/u/0/popout?th=%23thread-a:mock-thread-2'
+		)
+	);
 
 	// Check that there is only 1 primary card item in category
 	// In html, each primary item has: <div style="font-size:14px;margin-top:2px;">
