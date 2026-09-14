@@ -97,9 +97,9 @@ export const CATEGORY_METADATA: Record<TriageCategory, CategoryMetadata> = {
 export const ACTION_REQUIRED_ACCENT = { accent: '#dc2626', tint: '#fef2f2' };
 export const RECYCLING_ACCENT = { accent: '#6b7280', tint: '#f9fafb' };
 
-/** Builds a Gmail popout link that opens an email in its own browser tab. */
+/** Builds a stable Gmail thread link that opens in a separate browser tab. */
 export const buildThreadLink = (threadId: string): string =>
-	`https://mail.google.com/mail/u/0/popout?th=%23thread-a:${encodeURIComponent(threadId)}`;
+	`https://mail.google.com/mail/u/0/#all/${encodeURIComponent(threadId)}`;
 
 export const formatIsoDate = (date: Date): string => {
 	const year = date.getFullYear();
