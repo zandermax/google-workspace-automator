@@ -268,9 +268,10 @@ export const extractEmailSnippetFromThread = (
 };
 
 export const toGeminiClassificationInput = (
-	extracted: ExtractedEmailSnippet
+	extracted: ExtractedEmailSnippet,
+	modelId = extracted.id
 ): GeminiClassificationInput => ({
-	id: extracted.id,
+	id: modelId,
 	sender: extracted.sender,
 	subject: extracted.subject,
 	snippet: extracted.snippet,

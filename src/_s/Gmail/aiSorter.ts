@@ -52,6 +52,48 @@ export interface AiSorterPipelineResult {
 	digestSubject: string;
 }
 
+const modelInputId = (index: number): string =>
+	`email-${String(index + 1).padStart(3, '0')}`;
+
+export const restoreClassificationIds = (
+	classifications: TriageClassification[],
+	emails: ExtractedEmailSnippet[]
+): TriageClassification[] => {
+	if (classifications.length !== emails.length) {
+		throw new Error(
+			`Cannot restore classification IDs: received ${classifications.length} results for ${emails.length} emails.`
+		);
+	}
+
+	const modelToSourceId = new Map(
+		emails.map((email, index) => [modelInputId(index), email.id])
+	);
+
+	return classifications.map((classification) => {
+		const sourceId = modelToSourceId.get(classification.id);
+		if (!sourceId) {
+			throw new Error(
+				`Gemini returned unknown model id "${classification.id}" while restoring classification IDs.`
+			);
+		}
+
+		const duplicateOfId = classification.duplicateOfId
+			? modelToSourceId.get(classification.duplicateOfId)
+			: undefined;
+		if (classification.duplicateOfId && !duplicateOfId) {
+			throw new Error(
+				`Gemini returned unknown duplicate model id "${classification.duplicateOfId}" while restoring classification IDs.`
+			);
+		}
+
+		return {
+			...classification,
+			id: sourceId,
+			...(duplicateOfId ? { duplicateOfId } : {}),
+		};
+	});
+};
+
 export const runAiSorterPipeline = (
 	options: AiSorterPipelineOptions = {}
 ): AiSorterPipelineResult => {
@@ -121,7 +163,9 @@ export const runAiSorterPipeline = (
 	for (const thread of threads) {
 		const snippet = extractEmailSnippetFromThread(thread);
 		emailSnippets.push(snippet);
-		geminiInputs.push(toGeminiClassificationInput(snippet));
+		geminiInputs.push(
+			toGeminiClassificationInput(snippet, modelInputId(geminiInputs.length))
+		);
 	}
 
 	// 3. Batch classification via Gemini Flash
@@ -134,7 +178,10 @@ export const runAiSorterPipeline = (
 				model: options.geminiModel,
 			});
 
-		classifications = client.classifyBatch(geminiInputs);
+		classifications = restoreClassificationIds(
+			client.classifyBatch(geminiInputs),
+			emailSnippets
+		);
 	}
 
 	// 4. Determine execution directives

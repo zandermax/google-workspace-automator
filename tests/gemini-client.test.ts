@@ -182,6 +182,47 @@ test('GeminiClient successfully calls API and parses valid classification batch'
 			'triage/unknown',
 		]
 	);
+	assert.deepEqual(
+		parsedBody.generationConfig?.response_schema?.items?.properties?.id?.enum,
+		['thread-1', 'thread-2']
+	);
+	assert.deepEqual(
+		parsedBody.generationConfig?.response_schema?.items?.properties
+			?.duplicateOfId?.enum,
+		['', 'thread-1', 'thread-2']
+	);
+	assert.equal(parsedBody.generationConfig?.response_schema?.minItems, 2);
+	assert.equal(parsedBody.generationConfig?.response_schema?.maxItems, 2);
+});
+
+test('validateClassificationResponse restores the input id when Gemini hallucinates an id', () => {
+	const rawResponse = JSON.stringify([
+		{
+			id: '1a020cf68fe34ffc',
+			category: 'triage/personal',
+			timeSensitive: false,
+			actionRequired: false,
+			summary: 'A personal message.',
+			highlights: [],
+			keyDetail: '',
+		},
+		{
+			id: 'thread-2',
+			category: 'triage/finance',
+			timeSensitive: true,
+			actionRequired: true,
+			summary: 'An electric utility bill.',
+			highlights: [],
+			keyDetail: 'Due 2026-09-20',
+		},
+	]);
+
+	const results = validateClassificationResponse(rawResponse, mockInputs);
+
+	assert.deepEqual(
+		results.map((result) => result.id),
+		['thread-1', 'thread-2']
+	);
 });
 
 test('GeminiClient normalizes unexpected categories to triage/unknown', () => {
@@ -713,6 +754,58 @@ test('validateClassificationResponse validates well-formed JSON array and catche
 				mockInputs
 			),
 		/invalid highlights array/iu
+	);
+});
+
+test('validateClassificationResponse rejects duplicate classifications', () => {
+	const item = {
+		id: 'thread-1',
+		category: 'triage/personal',
+		timeSensitive: false,
+		actionRequired: false,
+		summary: 'test',
+		highlights: [],
+		keyDetail: '',
+	};
+
+	assert.throws(
+		() =>
+			validateClassificationResponse(
+				JSON.stringify([item, { ...item }]),
+				mockInputs
+			),
+		/duplicate classification id/iu
+	);
+});
+
+test('validateClassificationResponse rejects an unexpected duplicateOfId', () => {
+	assert.throws(
+		() =>
+			validateClassificationResponse(
+				JSON.stringify([
+					{
+						id: 'thread-1',
+						category: 'triage/personal',
+						timeSensitive: false,
+						actionRequired: false,
+						summary: 'test',
+						highlights: [],
+						keyDetail: '',
+						duplicateOfId: 'unexpected-id',
+					},
+					{
+						id: 'thread-2',
+						category: 'triage/finance',
+						timeSensitive: true,
+						actionRequired: true,
+						summary: 'test',
+						highlights: [],
+						keyDetail: '',
+					},
+				]),
+				mockInputs
+			),
+		/unexpected duplicateOfId/iu
 	);
 });
 

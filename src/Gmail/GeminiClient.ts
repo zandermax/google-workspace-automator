@@ -228,6 +228,22 @@ export const CLASSIFICATION_RESPONSE_SCHEMA = {
 	},
 } as const;
 
+export const buildClassificationResponseSchema = (
+	inputIds: string[]
+) => ({
+	...CLASSIFICATION_RESPONSE_SCHEMA,
+	minItems: inputIds.length,
+	maxItems: inputIds.length,
+	items: {
+		...CLASSIFICATION_RESPONSE_SCHEMA.items,
+		properties: {
+			...CLASSIFICATION_RESPONSE_SCHEMA.items.properties,
+			id: { type: 'STRING', enum: inputIds },
+			duplicateOfId: { type: 'STRING', enum: ['', ...inputIds] },
+		},
+	},
+});
+
 export const normalizeCategory = (category: string): string => {
 	const trimmed = category.trim();
 	if (
@@ -307,6 +323,8 @@ export const validateClassificationResponse = (
 	}
 
 	const expectedIds = new Set(expectedInputs.map((i) => i.id));
+	const canRecoverInvalidIds = parsed.length === expectedInputs.length;
+	const seenIds = new Set<string>();
 	const classifications: TriageClassification[] = [];
 
 	for (let i = 0; i < parsed.length; i += 1) {
@@ -325,32 +343,57 @@ export const validateClassificationResponse = (
 			keyDetail,
 		} = item as Record<string, unknown>;
 
-		if (typeof id !== 'string' || !expectedIds.has(id)) {
+		const resolvedId =
+			typeof id === 'string' && expectedIds.has(id)
+				? id
+				: canRecoverInvalidIds
+					? expectedInputs[i].id
+					: undefined;
+
+		if (!resolvedId) {
 			throw new Error(
 				`Item at index ${i} has invalid or unexpected id: "${String(id)}".`
 			);
 		}
 
+		if (seenIds.has(resolvedId)) {
+			throw new Error(`Duplicate classification id: "${resolvedId}".`);
+		}
+		seenIds.add(resolvedId);
+
+		if (resolvedId !== id) {
+			const message = `Gemini returned invalid id "${String(id)}" at index ${i}; using input id "${resolvedId}".`;
+			if (typeof Logger !== 'undefined') {
+				Logger.log(message);
+			} else {
+				console.warn(message);
+			}
+		}
+
 		if (typeof category !== 'string') {
-			throw new Error(`Item with id "${id}" has non-string category field.`);
+			throw new Error(
+				`Item with id "${resolvedId}" has non-string category field.`
+			);
 		}
 
 		const normalizedCategory = normalizeCategory(category);
 
 		if (typeof timeSensitive !== 'boolean') {
 			throw new Error(
-				`Item with id "${id}" has non-boolean timeSensitive field.`
+				`Item with id "${resolvedId}" has non-boolean timeSensitive field.`
 			);
 		}
 
 		if (typeof actionRequired !== 'boolean') {
 			throw new Error(
-				`Item with id "${id}" has non-boolean actionRequired field.`
+				`Item with id "${resolvedId}" has non-boolean actionRequired field.`
 			);
 		}
 
 		if (typeof summary !== 'string') {
-			throw new Error(`Item with id "${id}" has non-string summary field.`);
+			throw new Error(
+				`Item with id "${resolvedId}" has non-string summary field.`
+			);
 		}
 
 		if (
@@ -358,12 +401,14 @@ export const validateClassificationResponse = (
 			!highlights.every((h) => typeof h === 'string')
 		) {
 			throw new Error(
-				`Item with id "${id}" has invalid highlights array (must be string[]).`
+				`Item with id "${resolvedId}" has invalid highlights array (must be string[]).`
 			);
 		}
 
 		if (typeof keyDetail !== 'string') {
-			throw new Error(`Item with id "${id}" has non-string keyDetail field.`);
+			throw new Error(
+				`Item with id "${resolvedId}" has non-string keyDetail field.`
+			);
 		}
 
 		const duplicateOfId =
@@ -371,8 +416,14 @@ export const validateClassificationResponse = (
 				? ((item as Record<string, unknown>).duplicateOfId as string)
 				: undefined;
 
+		if (duplicateOfId && !expectedIds.has(duplicateOfId)) {
+			throw new Error(
+				`Item with id "${resolvedId}" has unexpected duplicateOfId "${duplicateOfId}".`
+			);
+		}
+
 		classifications.push({
-			id,
+			id: resolvedId,
 			category: normalizedCategory as (typeof TRIAGE_CATEGORIES)[number],
 			timeSensitive,
 			actionRequired,
@@ -464,7 +515,9 @@ export class GeminiClient {
 				],
 				generationConfig: {
 					response_mime_type: 'application/json',
-					response_schema: CLASSIFICATION_RESPONSE_SCHEMA,
+					response_schema: buildClassificationResponseSchema(
+						inputs.map((input) => input.id)
+					),
 				},
 			};
 

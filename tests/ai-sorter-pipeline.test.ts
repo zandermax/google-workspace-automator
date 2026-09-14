@@ -1,9 +1,50 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { runAiSorterPipeline } from '../src/_s/Gmail/aiSorter';
+import {
+	restoreClassificationIds,
+	runAiSorterPipeline,
+} from '../src/_s/Gmail/aiSorter';
 import { GeminiClient, type HttpTransport } from '../src/Gmail/GeminiClient';
 import { CASCADE_QUERIES } from '../src/Gmail/cascadeSelection';
 import type { MessageLike, ThreadLike } from '../src/Gmail/extraction';
+import type {
+	ExtractedEmailSnippet,
+	TriageClassification,
+} from '../src/types/Gmail/triage';
+
+test('restoreClassificationIds maps model IDs and duplicate references back to Gmail IDs', () => {
+	const emails = [
+		{ id: 'gmail-thread-1' },
+		{ id: 'gmail-thread-2' },
+	] as ExtractedEmailSnippet[];
+	const classifications = [
+		{
+			id: 'email-001',
+			category: 'triage/personal',
+			timeSensitive: false,
+			actionRequired: false,
+			summary: 'First email',
+			highlights: [],
+			keyDetail: '',
+			duplicateOfId: 'email-002',
+		},
+		{
+			id: 'email-002',
+			category: 'triage/finance',
+			timeSensitive: false,
+			actionRequired: false,
+			summary: 'Second email',
+			highlights: [],
+			keyDetail: '',
+		},
+	] as TriageClassification[];
+
+	const restored = restoreClassificationIds(classifications, emails);
+
+	assert.equal(restored[0].id, 'gmail-thread-1');
+	assert.equal(restored[0].duplicateOfId, 'gmail-thread-2');
+	assert.equal(restored[1].id, 'gmail-thread-2');
+});
 
 const createMockMessage = (id: string, subject: string, sender: string, body: string): MessageLike => ({
 	getId: () => `msg-${id}`,
@@ -162,7 +203,7 @@ test('runAiSorterPipeline groups duplicate threads in digest while processing bo
 
 	const geminiClassifications = [
 		{
-			id: 'mock-thread-1',
+			id: 'email-001',
 			category: 'triage/personal',
 			timeSensitive: false,
 			actionRequired: false,
@@ -171,14 +212,14 @@ test('runAiSorterPipeline groups duplicate threads in digest while processing bo
 			keyDetail: '10am',
 		},
 		{
-			id: 'mock-thread-2',
+			id: 'email-002',
 			category: 'triage/personal',
 			timeSensitive: false,
 			actionRequired: false,
 			summary: 'Duplicate team sync reminder.',
 			highlights: ['Sync reminder follow-up'],
 			keyDetail: '10am',
-			duplicateOfId: 'mock-thread-1',
+			duplicateOfId: 'email-001',
 		},
 	];
 
