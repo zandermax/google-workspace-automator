@@ -49,6 +49,44 @@ export const toHtmlNumericEntities = (html: string): string =>
 	);
 
 /**
+ * Encodes an email subject using RFC 2047 MIME encoded-word syntax (=?UTF-8?B?...?=)
+ * when it contains non-ASCII characters (e.g. emoji, em-dash).
+ *
+ * Apps Script's GmailApp.sendEmail() transmits headers as Latin-1/ASCII without UTF-8
+ * encoding, converting surrogate pairs into question marks ('??'). Encoding as RFC 2047
+ * ensures the subject header remains pure 7-bit ASCII while email clients decode and
+ * render the full emoji.
+ */
+export const toRfc2047Subject = (subject: string): string => {
+	if (
+		!/[^\x00-\x7F]/u.test(subject) ||
+		(subject.startsWith('=?') && subject.endsWith('?='))
+	) {
+		return subject;
+	}
+
+	let base64: string;
+	if (typeof Buffer !== 'undefined') {
+		base64 = Buffer.from(subject, 'utf8').toString('base64');
+	} else if (
+		typeof Utilities !== 'undefined' &&
+		typeof Utilities.base64Encode === 'function' &&
+		typeof Utilities.Charset !== 'undefined'
+	) {
+		base64 = Utilities.base64Encode(subject, Utilities.Charset.UTF_8);
+	} else {
+		const bytes = new TextEncoder().encode(subject);
+		let bin = '';
+		for (let i = 0; i < bytes.length; i += 1) {
+			bin += String.fromCharCode(bytes[i]);
+		}
+		base64 = btoa(bin);
+	}
+
+	return `=?UTF-8?B?${base64}?=`;
+};
+
+/**
  * Decodes named, decimal, and hexadecimal HTML entities in a single pass.
  */
 export const decodeHtmlEntities = (text: string): string =>

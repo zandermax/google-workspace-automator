@@ -11,10 +11,7 @@ import {
 	formatUsagePercent,
 } from './StorageStats';
 import { escapeHtml, toHtmlNumericEntities } from '../helpers/html';
-import {
-	allocateSlotBudget,
-	resolveSlotPercentages,
-} from './cascadeSelection';
+import { allocateSlotBudget, resolveSlotPercentages } from './cascadeSelection';
 
 const HTML_FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -138,9 +135,7 @@ export const formatRelativeAge = (ageInDays: number): string => {
 	const yearLabel = `${years} year${years === 1 ? '' : 's'}`;
 	const monthLabel = `${months} month${months === 1 ? '' : 's'}`;
 
-	return months === 0
-		? `${yearLabel} ago`
-		: `${yearLabel}, ${monthLabel} ago`;
+	return months === 0 ? `${yearLabel} ago` : `${yearLabel}, ${monthLabel} ago`;
 };
 
 export const formatSizeKb = (sizeKb: number): string => {
@@ -193,7 +188,7 @@ const renderEmailItem = (
 	}
 
 	if (email.unsubscribeUrl) {
-		lines.push(`   🔗 Unsubscribe: ${email.unsubscribeUrl}`);
+		lines.push(`   ⛓️‍💥 Unsubscribe: ${email.unsubscribeUrl}`);
 	} else if (email.unsubscribeMailto) {
 		lines.push(`   ✉️ Unsubscribe: ${email.unsubscribeMailto}`);
 	}
@@ -403,7 +398,8 @@ const renderEmailItemHtml = (
 	const highlightsHtml = classification.highlights
 		.filter((highlight) => highlight.trim())
 		.map(
-			(highlight) => `<li style="margin:2px 0;">${escapeHtml(highlight.trim())}</li>`
+			(highlight) =>
+				`<li style="margin:2px 0;">${escapeHtml(highlight.trim())}</li>`
 		)
 		.join('');
 
@@ -433,7 +429,7 @@ const renderEmailItemHtml = (
 
 	let unsubscribeHtml = '';
 	if (email.unsubscribeUrl) {
-		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeUrl)}" style="color:#6b7280;font-size:12px;text-decoration:none;">🔗 Unsubscribe</a></div>`;
+		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeUrl)}" style="color:#6b7280;font-size:12px;text-decoration:none;">⛓️‍💥 Unsubscribe</a></div>`;
 	} else if (email.unsubscribeMailto) {
 		unsubscribeHtml = `<div style="margin-top:6px;"><a href="${escapeHtml(email.unsubscribeMailto)}" style="color:#6b7280;font-size:12px;text-decoration:none;">✉️ Unsubscribe</a></div>`;
 	}

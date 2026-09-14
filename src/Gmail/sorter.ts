@@ -1,3 +1,5 @@
+import { toRfc2047Subject } from '../helpers/html';
+
 export type SortCategory =
 	'Personal' | 'Finance' | 'Newsletters' | 'Alerts' | 'Follow-up' | 'Review';
 
@@ -278,7 +280,7 @@ export const sendDryRunInboxSortDigest = (
 	const bodyText = lines.join('\n');
 	GmailApp.sendEmail(
 		recipient,
-		'📬 Dry-run inbox sort summary',
+		toRfc2047Subject('📬 Dry-run inbox sort summary'),
 		bodyText,
 		{
 			htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, monospace; white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${bodyText}</div>`,

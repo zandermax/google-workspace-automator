@@ -5,6 +5,7 @@ import {
 	decodeHtmlEntities,
 	stripHtml,
 	toHtmlNumericEntities,
+	toRfc2047Subject,
 } from '../src/helpers/html';
 
 test('toHtmlNumericEntities converts non-BMP and BMP emoji to numeric entities', () => {
@@ -12,7 +13,64 @@ test('toHtmlNumericEntities converts non-BMP and BMP emoji to numeric entities',
 		toHtmlNumericEntities('<div>📬 Digest — ⚡</div>'),
 		'<div>&#128236; Digest &#8212; &#9889;</div>'
 	);
-	assert.equal(toHtmlNumericEntities('<b>plain ascii</b>'), '<b>plain ascii</b>');
+	assert.equal(
+		toHtmlNumericEntities('<b>plain ascii</b>'),
+		'<b>plain ascii</b>'
+	);
+});
+
+test('toRfc2047Subject encodes non-ASCII subjects using RFC 2047 MIME syntax', () => {
+	const subject = '📬 Daily Email Digest — 2026-09-10';
+	const encoded = toRfc2047Subject(subject);
+
+	assert.equal(
+		encoded,
+		'=?UTF-8?B?8J+TrCBEYWlseSBFbWFpbCBEaWdlc3Qg4oCUIDIwMjYtMDktMTA=?='
+	);
+	assert.doesNotMatch(encoded, /[^\x00-\x7F]/u);
+});
+
+test('toRfc2047Subject preserves pure-ASCII subjects without encoding', () => {
+	const asciiSubject = '[DRY RUN] Daily Email Digest - 2026-09-10';
+	assert.equal(toRfc2047Subject(asciiSubject), asciiSubject);
+});
+
+test('toRfc2047Subject does not double-encode already encoded subjects', () => {
+	const alreadyEncoded =
+		'=?UTF-8?B?8J+TrCBEYWlseSBFbWFpbCBEaWdlc3Qg4oCUIDIwMjYtMDktMTA=?=';
+	assert.equal(toRfc2047Subject(alreadyEncoded), alreadyEncoded);
+});
+
+test('toRfc2047Subject uses Utilities.base64Encode when available in GAS environment', () => {
+	let encodeCalledWith = '';
+	const fakeUtilities = {
+		base64Encode(text: string) {
+			encodeCalledWith = text;
+			return 'GAS_BASE64';
+		},
+		Charset: { UTF_8: 'UTF-8' },
+	};
+
+	const originalBuffer = (globalThis as any).Buffer;
+	const originalUtilities = (globalThis as any).Utilities;
+
+	delete (globalThis as any).Buffer;
+	(globalThis as any).Utilities = fakeUtilities;
+
+	try {
+		const encoded = toRfc2047Subject('📬 test');
+		assert.equal(encoded, '=?UTF-8?B?GAS_BASE64?=');
+		assert.equal(encodeCalledWith, '📬 test');
+	} finally {
+		if (originalBuffer !== undefined) {
+			(globalThis as any).Buffer = originalBuffer;
+		}
+		if (originalUtilities !== undefined) {
+			(globalThis as any).Utilities = originalUtilities;
+		} else {
+			delete (globalThis as any).Utilities;
+		}
+	}
 });
 
 test('escapeHtml escapes HTML-unsafe characters using fallback single-pass map', () => {
@@ -72,7 +130,10 @@ test('decodeHtmlEntities decodes named, decimal, and hexadecimal entities', () =
 });
 
 test('decodeHtmlEntities preserves unknown entities and handles edge cases', () => {
-	assert.equal(decodeHtmlEntities('&unknown; &#notanumber;'), '&unknown; &#notanumber;');
+	assert.equal(
+		decodeHtmlEntities('&unknown; &#notanumber;'),
+		'&unknown; &#notanumber;'
+	);
 	assert.equal(decodeHtmlEntities(''), '');
 });
 

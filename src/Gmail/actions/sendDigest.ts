@@ -1,6 +1,4 @@
-import {
-	type DailyDigestData,
-} from '@/types/Gmail/triage';
+import { type DailyDigestData } from '@/types/Gmail/triage';
 import {
 	composeDigestBody,
 	composeDigestHtml,
@@ -9,6 +7,7 @@ import {
 	composeBacklogOnlyDigestHtml,
 	composeBacklogOnlyDigestSubject,
 } from '../digestComposer';
+import { toRfc2047Subject } from '../../helpers/html';
 
 export interface EmailSender {
 	sendEmail(
@@ -30,7 +29,7 @@ export interface SendDigestResult {
 	body: string;
 }
 
-const defaultEmailSender: EmailSender = {
+export const defaultEmailSender: EmailSender = {
 	sendEmail(
 		recipient: string,
 		subject: string,
@@ -40,7 +39,7 @@ const defaultEmailSender: EmailSender = {
 		if (typeof GmailApp === 'undefined' || !GmailApp.sendEmail) {
 			throw new Error('GmailApp is not available in this environment.');
 		}
-		GmailApp.sendEmail(recipient, subject, body, options);
+		GmailApp.sendEmail(recipient, toRfc2047Subject(subject), body, options);
 	},
 };
 
