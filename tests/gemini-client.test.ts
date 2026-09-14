@@ -189,7 +189,7 @@ test('GeminiClient successfully calls API and parses valid classification batch'
 	assert.deepEqual(
 		parsedBody.generationConfig?.response_schema?.items?.properties
 			?.duplicateOfId?.enum,
-		['', 'thread-1', 'thread-2']
+		['thread-1', 'thread-2']
 	);
 	assert.equal(parsedBody.generationConfig?.response_schema?.minItems, 2);
 	assert.equal(parsedBody.generationConfig?.response_schema?.maxItems, 2);

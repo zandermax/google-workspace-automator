@@ -239,7 +239,7 @@ export const buildClassificationResponseSchema = (
 		properties: {
 			...CLASSIFICATION_RESPONSE_SCHEMA.items.properties,
 			id: { type: 'STRING', enum: inputIds },
-			duplicateOfId: { type: 'STRING', enum: ['', ...inputIds] },
+			duplicateOfId: { type: 'STRING', enum: inputIds },
 		},
 	},
 });
