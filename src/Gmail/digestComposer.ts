@@ -420,7 +420,7 @@ const renderEmailItemHtml = (
 		const dupItemsHtml = directive.effectiveDuplicates
 			.map(
 				(dup) =>
-					`<li style="margin:2px 0;"><a href="${buildThreadLink(dup.threadId)}" style="color:#2563eb;text-decoration:none;">${escapeHtml(dup.subject)}</a></li>`
+					`<li style="margin:2px 0;"><a href="${buildThreadLink(dup.threadId)}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">${escapeHtml(dup.subject)}</a></li>`
 			)
 			.join('\n\t\t');
 		duplicatesHtml = `<div style="margin-top:6px;font-size:12px;color:#4b5563;">
@@ -445,7 +445,7 @@ const renderEmailItemHtml = (
 
 	return `<div style="${itemStyle}">
 	<div style="font-size:11px;color:#6b7280;">${numberPrefix}${escapeHtml(metaText)}</div>
-	<div style="font-size:14px;margin-top:2px;"><a href="${buildThreadLink(threadId)}" style="color:#111827;text-decoration:none;"><strong>${escapeHtml(email.subject)}</strong></a></div>
+	<div style="font-size:14px;margin-top:2px;"><a href="${buildThreadLink(threadId)}" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>${escapeHtml(email.subject)}</strong></a></div>
 	${attachmentsHtml}
 	<div style="margin-top:4px;color:#1f2937;">→ ${escapeHtml(classification.summary)}</div>
 	${highlightsHtml ? `<ul style="margin:4px 0 0 18px;padding:0;color:#374151;">${highlightsHtml}</ul>` : ''}

@@ -315,6 +315,9 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 		keyDetail: 'Due by 2026-09-15: $120.00',
 		attachmentIcons: ['📄'],
 		unsubscribeUrl: 'https://example.com/unsub',
+		effectiveDuplicates: [
+			{ threadId: 'duplicate-1', subject: 'Duplicate subject' },
+		],
 	});
 	const d2 = createMockDirective('item-2', 'triage/newsletters', {
 		sizeKb: 1200,
@@ -345,7 +348,12 @@ test('composeDigestHtml renders bold, thread-linked subjects, colored category c
 	// Bold subject linked to the real Gmail thread
 	assert.ok(
 		html.includes(
-			'<a href="https://mail.google.com/mail/u/0/#all/item-1" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
+			'<a href="https://mail.google.com/mail/u/0/#all/item-1" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>Subject of item-1</strong></a>'
+		)
+	);
+	assert.ok(
+		html.includes(
+			'https://mail.google.com/mail/u/0/#all/duplicate-1" target="_blank" rel="noopener"'
 		)
 	);
 
@@ -514,8 +522,8 @@ test('renders effective duplicates in plain text and html when present', () => {
 		'<div style="margin-top:6px;font-size:12px;color:#4b5563;">\n' +
 		'\t<span style="font-weight:600;">Effective duplicates:</span>\n' +
 		'\t<ul style="margin:2px 0 0 18px;padding:0;color:#374151;">\n' +
-		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-1" style="color:#2563eb;text-decoration:none;">Duplicate Subject 1 &lt;tag&gt;</a></li>\n' +
-		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-2" style="color:#2563eb;text-decoration:none;">Duplicate Subject 2</a></li>\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 1 &lt;tag&gt;</a></li>\n' +
+		'\t\t<li style="margin:2px 0;"><a href="https://mail.google.com/mail/u/0/#all/dup-2" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">Duplicate Subject 2</a></li>\n' +
 		'\t</ul>\n' +
 		'</div>';
 
