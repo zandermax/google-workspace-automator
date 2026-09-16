@@ -225,6 +225,9 @@ export const composeBacklogOnlyDigestSubject = (
 const pendingCountPhrase = (pendingCount: number): string =>
 	`${pendingCount} item${pendingCount === 1 ? '' : 's'} pending your review`;
 
+export const formatTriageReviewText = (): string =>
+	'👉 Review triage page';
+
 export const composeBacklogOnlyDigestBody = (
 	pendingCount: number,
 	actionsPageUrl: string
@@ -340,9 +343,7 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 		lines.push('TRIAGE');
 		lines.push(SECTION_SEPARATOR);
 		lines.push('');
-		lines.push(
-			`👉 Review ${data.entries.length} triage email${data.entries.length === 1 ? '' : 's'}: ${data.actionsPageUrl}`
-		);
+		lines.push(`${formatTriageReviewText()}: ${data.actionsPageUrl}`);
 		lines.push('');
 	}
 
@@ -598,7 +599,7 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 			'<div style="font-size:16px;font-weight:700;margin:20px 0 10px 0;">TRIAGE</div>'
 		);
 		sections.push(
-			`<div style="margin-bottom:12px;"><a href="${escapeHtml(data.actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:15px;font-weight:600;color:#2563eb;text-decoration:none;">👉 Review ${data.entries.length} triage email${data.entries.length === 1 ? '' : 's'} →</a></div>`
+			`<div style="margin-bottom:12px;"><a href="${escapeHtml(data.actionsPageUrl)}" target="_blank" rel="noopener" style="font-size:15px;font-weight:600;color:#2563eb;text-decoration:none;">${formatTriageReviewText()} →</a></div>`
 		);
 	}
 

@@ -18,6 +18,7 @@ import {
 	formatIsoDate,
 	formatRelativeAge,
 	formatSizeKb,
+	formatTriageReviewText,
 	SECTION_SEPARATOR,
 } from '../src/Gmail/digestComposer';
 import { sendDigest } from '../src/Gmail/actions/sendDigest';
@@ -208,6 +209,10 @@ test('composeDigestSubject prefixes [DRY RUN] only when active', () => {
 		composeDigestSubject(date, true),
 		'[DRY RUN] 📬 Daily Email Digest — 2026-09-10'
 	);
+});
+
+test('formatTriageReviewText centralizes the shared triage-line copy', () => {
+	assert.equal(formatTriageReviewText(), '👉 Review triage page');
 });
 
 test('composeDigestBody formats complete digest with all sections, attachments, and unsubscribe', () => {
@@ -574,7 +579,7 @@ test('composeDigestBody includes the Actions Page link near the top', () => {
 	};
 
 	const body = composeDigestBody(data);
-	assert.ok(body.includes(`Review 1 triage email: ${TEST_ACTIONS_URL}`));
+	assert.ok(body.includes(`Review triage page: ${TEST_ACTIONS_URL}`));
 });
 
 test('composeDigestHtml renders the Actions Page link as a larger-font link that opens in a new tab', () => {
@@ -594,7 +599,7 @@ test('composeDigestHtml renders the Actions Page link as a larger-font link that
 	const html = composeDigestHtml(data);
 	assert.ok(html.includes(`href="${TEST_ACTIONS_URL}"`));
 	assert.ok(html.includes('target="_blank"'));
-	assert.ok(html.includes('Review 1 triage email'));
+	assert.ok(html.includes('Review triage page'));
 	assert.ok(html.includes('font-size:15px'));
 });
 
