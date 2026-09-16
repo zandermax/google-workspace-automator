@@ -2,8 +2,17 @@ import { CATEGORY_METADATA } from './digestComposer';
 import { escapeHtml } from '../helpers/html';
 import { type PendingItem, type PendingItemGroup } from './queryPendingThreads';
 
+const formatAge = (ageInDays: number): string => {
+	const years = Math.floor(ageInDays / 365);
+	const remainingDays = ageInDays % 365;
+	const months = Math.floor(remainingDays / 30);
+	const days = remainingDays % 30;
+
+	return `${years}y ${months}mo ${days}d`;
+};
+
 const renderItemHtml = (item: PendingItem): string => `<div id="pending-${escapeHtml(item.threadId)}" style="padding:10px 0;border-top:1px solid rgba(0,0,0,0.06);">
-	<div style="font-size:11px;color:#6b7280;">${escapeHtml(item.sender)} &middot; ${item.ageInDays}d</div>
+	<div style="font-size:11px;color:#6b7280;">${escapeHtml(item.sender)} &middot; ${formatAge(item.ageInDays)}</div>
 	<div style="font-size:14px;margin-top:2px;"><strong>${escapeHtml(item.subject)}</strong></div>
 	<div style="margin-top:6px;">
 		<button onclick="archiveItem('${escapeHtml(item.threadId)}')" style="margin-right:8px;">Archive</button>

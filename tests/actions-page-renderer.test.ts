@@ -13,7 +13,7 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 					category: 'triage/personal',
 					subject: 'Hi',
 					sender: 'a@b.com',
-					ageInDays: 2,
+					ageInDays: 400,
 					unsubscribeUrl: 'https://newsletter.example.com/unsubscribe',
 				} as PendingItemGroup['items'][number],
 			],
@@ -24,6 +24,7 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 
 	assert.ok(html.includes('👤'));
 	assert.ok(html.includes('PERSONAL'));
+	assert.ok(html.includes('a@b.com &middot; 1y 1mo 5d'));
 	assert.ok(html.includes("archiveItem('t-1')"));
 	assert.ok(html.includes("deleteItem('t-1')"));
 	assert.ok(
