@@ -1,4 +1,4 @@
-import { CATEGORY_METADATA } from './digestComposer';
+import { CATEGORY_METADATA, buildThreadLink } from './digestComposer';
 import { escapeHtml } from '../helpers/html';
 import { type PendingItem, type PendingItemGroup } from './queryPendingThreads';
 
@@ -13,7 +13,7 @@ const formatAge = (ageInDays: number): string => {
 
 const renderItemHtml = (item: PendingItem): string => `<div id="pending-${escapeHtml(item.threadId)}" style="padding:10px 0;border-top:1px solid rgba(0,0,0,0.06);">
 	<div style="font-size:11px;color:#6b7280;">${escapeHtml(item.sender)} &middot; ${formatAge(item.ageInDays)}</div>
-	<div style="font-size:14px;margin-top:2px;"><strong>${escapeHtml(item.subject)}</strong></div>
+	<div style="font-size:14px;margin-top:2px;"><a href="${buildThreadLink(item.threadId)}" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>${escapeHtml(item.subject)}</strong></a></div>
 	${item.summary ? `<div style="margin-top:4px;color:#1f2937;">&rarr; ${escapeHtml(item.summary)}</div>` : ''}
 	<div style="margin-top:6px;">
 		<button data-action-button onclick="archiveItem('${escapeHtml(item.threadId)}')" style="margin-right:8px;">Archive</button>

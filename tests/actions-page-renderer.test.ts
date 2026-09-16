@@ -27,6 +27,8 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 	assert.ok(html.includes('PERSONAL'));
 	assert.ok(html.includes('a@b.com &middot; 1y 1mo 5d'));
 	assert.ok(html.includes('The week in product updates.'));
+	assert.ok(html.includes('href="https://mail.google.com/mail/u/0/#all/t-1"'));
+	assert.ok(html.includes('target="_blank"'));
 	assert.ok(html.includes("archiveItem('t-1')"));
 	assert.ok(html.includes("deleteItem('t-1')"));
 	assert.ok(
