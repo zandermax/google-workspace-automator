@@ -163,8 +163,8 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 	);
 });
 
-test('runAiSorterPipeline handles empty inbox run gracefully', () => {
-	let emailSent = false;
+test('runAiSorterPipeline defaults to the 30-thread daily limit', () => {
+	let sentBody = '';
 	const geminiClient = new GeminiClient({
 		apiKey: 'test-key',
 		transport: createMockGeminiTransport([]),
@@ -172,7 +172,6 @@ test('runAiSorterPipeline handles empty inbox run gracefully', () => {
 
 	const result = runAiSorterPipeline({
 		dryRun: false,
-		dailyLimit: 50,
 		geminiClient,
 		pendingCountProvider: { countPending: () => 0 },
 		actionsPageUrlProvider: {
@@ -185,8 +184,8 @@ test('runAiSorterPipeline handles empty inbox run gracefully', () => {
 		},
 		recipient: 'owner@example.com',
 		emailSender: {
-			sendEmail: () => {
-				emailSent = true;
+			sendEmail: (_recipient, _subject, body) => {
+				sentBody = body;
 			},
 		},
 	});
@@ -194,7 +193,7 @@ test('runAiSorterPipeline handles empty inbox run gracefully', () => {
 	assert.equal(result.processedCount, 0);
 	assert.equal(result.actionRequiredCount, 0);
 	assert.equal(result.autoRecyclingCount, 0);
-	assert.equal(emailSent, true);
+	assert.ok(sentBody.includes('Processed: 0 / 30'));
 });
 
 test('runAiSorterPipeline groups duplicate threads in digest while processing both in execution', () => {

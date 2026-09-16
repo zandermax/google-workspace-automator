@@ -242,6 +242,10 @@ That means the generated `dist` folder is the actual payload pushed to Google Ap
 
 > Important: do not edit generated files in `dist/` by hand. Treat it as build output only.
 
+### Runtime configuration
+
+Configure the deployed AI sorter and Gemini integration through Apps Script **Script properties**. See [SCRIPT_PROPERTIES.md](SCRIPT_PROPERTIES.md) for the complete property reference, defaults, validation rules, and a recommended conservative setup.
+
 ### Manual deploy flow
 
 If you want to do it step by step:

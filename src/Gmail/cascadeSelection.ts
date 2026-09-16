@@ -1,6 +1,6 @@
 import { type ThreadLike } from './extraction';
 
-export const DAILY_LIMIT = 50;
+export const DAILY_LIMIT = 30;
 export const OVERSAMPLE_MULTIPLIER = 5;
 
 export const CASCADE_QUERIES = {
@@ -11,8 +11,8 @@ export const CASCADE_QUERIES = {
 
 /** Share of each run's slots drawn from each pool, as percentages of the daily limit. */
 export const DEFAULT_SLOT_PERCENTAGES = {
-	inbox: 60,
-	largeElsewhere: 20,
+	inbox: 50,
+	largeElsewhere: 17,
 } as const;
 
 export interface SlotPercentages {
@@ -126,6 +126,14 @@ const readScriptProperty = (key: string): string | undefined => {
 	}
 
 	return PropertiesService.getScriptProperties().getProperty(key) ?? undefined;
+};
+
+/** A malformed limit must not accidentally increase Apps Script execution time. */
+export const resolveDailyLimit = (): number => {
+	const raw = readScriptProperty('SORTER_DAILY_LIMIT');
+	const parsed = Number(raw);
+
+	return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DAILY_LIMIT;
 };
 
 /** Invalid values fall through to the defaults inside `allocateSlotBudget`. */

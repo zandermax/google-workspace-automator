@@ -6,6 +6,7 @@ import {
 	fisherYatesShuffle,
 	allocateSlotBudget,
 	buildLargeMailQuery,
+	resolveDailyLimit,
 	resolveSlotPercentages,
 	resolveSizeThresholds,
 	BIG_SIZE_THRESHOLDS,
@@ -45,16 +46,16 @@ test('fisherYatesShuffle maintains all elements and works with deterministic ran
 	assert.deepEqual(new Set(shuffled), new Set(items));
 });
 
-test('allocateSlotBudget splits the daily limit 60/20/20 by default', () => {
+test('allocateSlotBudget splits the daily limit into 15 inbox, 5 large, and 10 random threads', () => {
 	assert.deepEqual(allocateSlotBudget(DAILY_LIMIT), {
-		inbox: 30,
-		largeElsewhere: 10,
+		inbox: 15,
+		largeElsewhere: 5,
 		randomElsewhere: 10,
 	});
 });
 
 test('allocateSlotBudget always sums to the limit despite rounding', () => {
-	for (const limit of [1, 3, 7, 13, 47, 50]) {
+	for (const limit of [1, 3, 7, 13, 30, 47, 50]) {
 		const budget = allocateSlotBudget(limit);
 		assert.equal(
 			budget.inbox + budget.largeElsewhere + budget.randomElsewhere,
@@ -93,7 +94,7 @@ test('allocateSlotBudget handles empty, saturated, and invalid percentages', () 
 	// Invalid values fall back to the defaults
 	assert.deepEqual(
 		allocateSlotBudget(50, { inbox: -5, largeElsewhere: Number.NaN }),
-		{ inbox: 30, largeElsewhere: 10, randomElsewhere: 10 }
+		{ inbox: 25, largeElsewhere: 8, randomElsewhere: 17 }
 	);
 });
 
@@ -183,10 +184,10 @@ test('selectLargeCandidates issues no searches when the budget is zero', () => {
 });
 
 test('daily limit is configured as a conservative cap', () => {
-	assert.equal(DAILY_LIMIT, 50);
+	assert.equal(DAILY_LIMIT, 30);
 });
 
-test('resolveSlotPercentages and resolveSizeThresholds read script properties safely', () => {
+test('sorter script properties use valid values and safely fall back to defaults', () => {
 	const globalWithProps = globalThis as any;
 	const original = globalWithProps.PropertiesService;
 
@@ -202,12 +203,14 @@ test('resolveSlotPercentages and resolveSizeThresholds read script properties sa
 		// Absent properties fall back to defaults
 		delete globalWithProps.PropertiesService;
 		assert.deepEqual(resolveSlotPercentages(), {
-			inbox: 60,
-			largeElsewhere: 20,
+			inbox: 50,
+			largeElsewhere: 17,
 		});
+		assert.equal(resolveDailyLimit(), DAILY_LIMIT);
 		assert.deepEqual(resolveSizeThresholds(), BIG_SIZE_THRESHOLDS);
 
 		withProperties({
+			SORTER_DAILY_LIMIT: '24',
 			SORTER_INBOX_PERCENT: '40',
 			SORTER_LARGE_MAIL_PERCENT: '35',
 			SORTER_SIZE_THRESHOLDS: '25M, 8M ,750K',
@@ -216,18 +219,23 @@ test('resolveSlotPercentages and resolveSizeThresholds read script properties sa
 			inbox: 40,
 			largeElsewhere: 35,
 		});
+		assert.equal(resolveDailyLimit(), 24);
 		assert.deepEqual(resolveSizeThresholds(), ['25M', '8M', '750K']);
 
 		// Malformed thresholds are rejected rather than injected into a Gmail query
 		withProperties({ SORTER_SIZE_THRESHOLDS: '10M OR in:anywhere, -label:x' });
 		assert.deepEqual(resolveSizeThresholds(), BIG_SIZE_THRESHOLDS);
+		withProperties({ SORTER_DAILY_LIMIT: '0' });
+		assert.equal(resolveDailyLimit(), DAILY_LIMIT);
+		withProperties({ SORTER_DAILY_LIMIT: '12.5' });
+		assert.equal(resolveDailyLimit(), DAILY_LIMIT);
 
 		// Non-numeric percentages become NaN and are clamped back to defaults
 		withProperties({ SORTER_INBOX_PERCENT: 'lots' });
-		assert.deepEqual(allocateSlotBudget(50, resolveSlotPercentages()), {
-			inbox: 30,
-			largeElsewhere: 10,
-			randomElsewhere: 10,
+			assert.deepEqual(allocateSlotBudget(30, resolveSlotPercentages()), {
+				inbox: 15,
+				largeElsewhere: 5,
+				randomElsewhere: 10,
 		});
 	} finally {
 		if (original === undefined) {
@@ -252,6 +260,7 @@ test('selectCascadeThreads caps unread inbox at its budget and detects overflow'
 
 	const result = selectCascadeThreads({
 		limit: 50,
+		percentages: { inbox: 60, largeElsewhere: 20 },
 		search: (query, _start, max) => {
 			queryExecuted.push(query);
 			if (query === CASCADE_QUERIES.unreadInbox) {

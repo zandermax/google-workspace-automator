@@ -401,7 +401,7 @@ test('composeDigestBody displays high volume overflow banner when triggered', ()
 	// Overflow now means unread mail exceeded its 60% inbox share, not the whole run
 	assert.ok(
 		body.includes(
-			"⚠️ High inbox volume: more unread mail than this run's inbox share (30 of 50 slots)."
+			"⚠️ High inbox volume: more unread mail than this run's inbox share (25 of 50 slots)."
 		)
 	);
 	assert.ok(

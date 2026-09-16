@@ -5,6 +5,8 @@ import {
 } from '../../Gmail/extraction';
 import { GeminiClient } from '../../Gmail/GeminiClient';
 import {
+	DAILY_LIMIT,
+	resolveDailyLimit,
 	selectCascadeThreads,
 	type SearchFunction,
 } from '../../Gmail/cascadeSelection';
@@ -98,7 +100,7 @@ export const runAiSorterPipeline = (
 	options: AiSorterPipelineOptions = {}
 ): AiSorterPipelineResult => {
 	const dryRun = options.dryRun === true;
-	const dailyLimit = options.dailyLimit ?? 50;
+	const dailyLimit = options.dailyLimit ?? resolveDailyLimit();
 
 	if (typeof Logger !== 'undefined') {
 		Logger.log(
