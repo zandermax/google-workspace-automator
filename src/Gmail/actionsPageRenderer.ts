@@ -8,6 +8,7 @@ const renderItemHtml = (item: PendingItem): string => `<div id="pending-${escape
 	<div style="margin-top:6px;">
 		<button onclick="archiveItem('${escapeHtml(item.threadId)}')" style="margin-right:8px;">Archive</button>
 		<button onclick="deleteItem('${escapeHtml(item.threadId)}')">Delete</button>
+		${item.unsubscribeUrl ? `<a href="${escapeHtml(item.unsubscribeUrl)}" target="_blank" rel="noopener" style="margin-left:8px;">Unsubscribe</a>` : item.unsubscribeMailto ? `<a href="${escapeHtml(item.unsubscribeMailto)}" style="margin-left:8px;">Unsubscribe</a>` : ''}
 	</div>
 </div>`;
 

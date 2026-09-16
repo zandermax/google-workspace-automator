@@ -12,13 +12,20 @@ const createThread = (
 	sender: string,
 	labels: string[],
 	lastMessageDate: Date,
-	inInbox = true
+	inInbox = true,
+	listUnsubscribe = ''
 ): PendingThreadLike => ({
 	getId: () => id,
 	getFirstMessageSubject: () => subject,
 	getLastMessageDate: () => lastMessageDate,
 	getLabels: () => labels.map((name) => ({ getName: () => name })),
-	getMessages: () => [{ getFrom: () => sender }],
+	getMessages: () => [
+		{
+			getFrom: () => sender,
+			getHeader: (name: string) =>
+				name === 'List-Unsubscribe' ? listUnsubscribe : '',
+		},
+	],
 	isInInbox: () => inInbox,
 });
 
@@ -58,6 +65,24 @@ test('queryPendingThreads falls back to triage/unknown when no category label is
 	const items = queryPendingThreads(() => [thread], now);
 	assert.equal(items[0].category, 'triage/unknown');
 	assert.equal(items[0].ageInDays, 0);
+});
+
+test('queryPendingThreads reads the unsubscribe URL from the latest message', () => {
+	const now = new Date('2026-09-11T00:00:00Z');
+	const thread = createThread(
+		't-unsubscribe',
+		'Weekly newsletter',
+		'news@example.com',
+		['triage/newsletters', 'Digest/Pending-Action'],
+		now,
+		true,
+		'<https://newsletter.example.com/unsubscribe>, <mailto:unsubscribe@example.com>'
+	);
+
+	const [item] = queryPendingThreads(() => [thread], now);
+
+	assert.equal(item.unsubscribeUrl, 'https://newsletter.example.com/unsubscribe');
+	assert.equal(item.unsubscribeMailto, 'mailto:unsubscribe@example.com');
 });
 
 test('queryPendingThreads sorts oldest first within the same inbox partition', () => {

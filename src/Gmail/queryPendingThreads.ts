@@ -3,13 +3,19 @@ import {
 	type TriageCategory,
 } from '@/types/Gmail/triage';
 import { PENDING_ACTION_SEARCH_QUERY } from './actionRules';
+import { parseUnsubscribeHeaders } from './extraction';
+
+interface PendingMessageLike {
+	getFrom(): string;
+	getHeader?(name: string): string;
+}
 
 export interface PendingThreadLike {
 	getId(): string;
 	getFirstMessageSubject(): string;
 	getLastMessageDate(): Date;
 	getLabels(): Array<{ getName(): string }>;
-	getMessages(): Array<{ getFrom(): string }>;
+	getMessages(): PendingMessageLike[];
 	isInInbox(): boolean;
 }
 
@@ -19,6 +25,8 @@ export interface PendingItem {
 	subject: string;
 	sender: string;
 	ageInDays: number;
+	unsubscribeUrl?: string;
+	unsubscribeMailto?: string;
 }
 
 export interface PendingItemGroup {
@@ -62,6 +70,9 @@ export const queryPendingThreads = (
 	const ranked = threads.map((thread) => {
 		const messages = thread.getMessages();
 		const lastMessage = messages[messages.length - 1];
+		const unsubscribe = parseUnsubscribeHeaders(
+			lastMessage?.getHeader?.('List-Unsubscribe')
+		);
 
 		const item: PendingItem = {
 			threadId: thread.getId(),
@@ -69,6 +80,8 @@ export const queryPendingThreads = (
 			subject: thread.getFirstMessageSubject(),
 			sender: lastMessage ? lastMessage.getFrom() : '',
 			ageInDays: daysSince(thread.getLastMessageDate(), now),
+			...(unsubscribe.url ? { unsubscribeUrl: unsubscribe.url } : {}),
+			...(unsubscribe.mailto ? { unsubscribeMailto: unsubscribe.mailto } : {}),
 		};
 
 		return { item, inInbox: thread.isInInbox() };

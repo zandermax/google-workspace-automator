@@ -14,7 +14,8 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 					subject: 'Hi',
 					sender: 'a@b.com',
 					ageInDays: 2,
-				},
+					unsubscribeUrl: 'https://newsletter.example.com/unsubscribe',
+				} as PendingItemGroup['items'][number],
 			],
 		},
 	];
@@ -25,6 +26,14 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 	assert.ok(html.includes('PERSONAL'));
 	assert.ok(html.includes("archiveItem('t-1')"));
 	assert.ok(html.includes("deleteItem('t-1')"));
+	assert.ok(
+		html.includes(
+			'href="https://newsletter.example.com/unsubscribe"'
+		)
+	);
+	assert.ok(
+		html.indexOf("deleteItem('t-1')") < html.indexOf('Unsubscribe')
+	);
 	assert.ok(html.includes('google.script.run'));
 	assert.ok(html.includes('handleArchiveDigestThread'));
 	assert.ok(html.includes('handleDeleteDigestThread'));
