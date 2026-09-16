@@ -5,6 +5,7 @@ import {
 	parseDomainFromEmail,
 	classifyAttachment,
 	parseUnsubscribeHeaders,
+	extractUnsubscribeHeaderFromMessage,
 	calculateAgeInDays,
 	extractEmailSnippetFromMessage,
 	extractEmailSnippetFromThread,
@@ -97,6 +98,22 @@ test('parseUnsubscribeHeaders handles standalone URL or mailto', () => {
 		mailto: 'mailto:leave@service.com',
 	});
 	assert.deepEqual(parseUnsubscribeHeaders(undefined), {});
+});
+
+test('extractUnsubscribeHeaderFromMessage prefers the visible Xing unsubscribe link', () => {
+	const message = {
+		getHeader: (name: string) =>
+			name === 'List-Unsubscribe'
+				? '<https://www.xing.com/mw/unsubscribe/HlY5jvhfrAnXnnv9-avU>'
+				: '',
+		getBody: () =>
+				'<a href="https://www.xing.com/m/HlY5jvhfrAnXnnv9-avUM">Unsubscribe</a>',
+	} as MessageLike;
+
+	assert.deepEqual(extractUnsubscribeHeaderFromMessage(message), {
+		url: 'https://www.xing.com/m/HlY5jvhfrAnXnnv9-avUM',
+		mailto: undefined,
+	});
 });
 
 test('calculateAgeInDays measures time elapsed correctly', () => {

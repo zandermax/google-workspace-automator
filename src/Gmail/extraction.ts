@@ -27,6 +27,12 @@ export interface MessageLike {
 	};
 }
 
+export interface UnsubscribeMessageLike {
+	getHeader?(name: string): string;
+	getBody?(): string;
+	getRawContent?(): string;
+}
+
 export interface ThreadLike {
 	getId(): string;
 	getMessages(): MessageLike[];
@@ -143,19 +149,65 @@ export const parseUnsubscribeHeaders = (
 	return { url, mailto };
 };
 
+const extractBodyUnsubscribeUrl = (
+	body: string | undefined,
+	headerUrl: string | undefined
+): string | undefined => {
+	if (!body) {
+		return undefined;
+	}
+
+	let headerHost: string | undefined;
+	if (headerUrl) {
+		try {
+			headerHost = new URL(headerUrl).host;
+		} catch {
+			return undefined;
+		}
+	}
+
+	const anchorPattern = /<a\b[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/giu;
+	for (const match of body.matchAll(anchorPattern)) {
+		const label = match[2].replace(/<[^>]+>/gu, ' ');
+		if (!/unsubscribe/iu.test(label)) {
+			continue;
+		}
+
+		try {
+			const candidate = new URL(match[1]);
+			if (!headerHost || candidate.host === headerHost) {
+				return candidate.toString();
+			}
+		} catch {
+			continue;
+		}
+	}
+
+	return undefined;
+};
+
 export const calculateAgeInDays = (date: Date, now = new Date()): number => {
 	const diffMs = now.getTime() - date.getTime();
 	return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 };
 
 export const extractUnsubscribeHeaderFromMessage = (
-	message: MessageLike
+	message: UnsubscribeMessageLike
 ): { url?: string; mailto?: string } => {
+	let parsed: { url?: string; mailto?: string } = {};
 	if (typeof message.getHeader === 'function') {
 		const header = message.getHeader('List-Unsubscribe');
 		if (header) {
-			return parseUnsubscribeHeaders(header);
+			parsed = parseUnsubscribeHeaders(header);
 		}
+	}
+
+	const bodyUrl = extractBodyUnsubscribeUrl(message.getBody?.(), parsed.url);
+	if (bodyUrl) {
+		return { ...parsed, url: bodyUrl };
+	}
+	if (parsed.url || parsed.mailto) {
+		return parsed;
 	}
 
 	if (typeof message.getRawContent === 'function') {
@@ -164,7 +216,12 @@ export const extractUnsubscribeHeaderFromMessage = (
 			const match =
 				/List-Unsubscribe:\s*([^\r\n]+(?:\r?\n[ \t]+[^\r\n]+)*)/iu.exec(raw);
 			if (match) {
-				return parseUnsubscribeHeaders(match[1]);
+				const rawParsed = parseUnsubscribeHeaders(match[1]);
+				const rawBodyUrl = extractBodyUnsubscribeUrl(
+					message.getBody?.(),
+					rawParsed.url
+				);
+				return rawBodyUrl ? { ...rawParsed, url: rawBodyUrl } : rawParsed;
 			}
 		}
 	}

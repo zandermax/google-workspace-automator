@@ -13,7 +13,8 @@ const createThread = (
 	labels: string[],
 	lastMessageDate: Date,
 	inInbox = true,
-	listUnsubscribe = ''
+	listUnsubscribe = '',
+	body = ''
 ): PendingThreadLike => ({
 	getId: () => id,
 	getFirstMessageSubject: () => subject,
@@ -24,6 +25,7 @@ const createThread = (
 			getFrom: () => sender,
 			getHeader: (name: string) =>
 				name === 'List-Unsubscribe' ? listUnsubscribe : '',
+			getBody: () => body,
 		},
 	],
 	isInInbox: () => inInbox,
@@ -83,6 +85,24 @@ test('queryPendingThreads reads the unsubscribe URL from the latest message', ()
 
 	assert.equal(item.unsubscribeUrl, 'https://newsletter.example.com/unsubscribe');
 	assert.equal(item.unsubscribeMailto, 'mailto:unsubscribe@example.com');
+});
+
+test('queryPendingThreads prefers the visible Xing unsubscribe link', () => {
+	const now = new Date('2026-09-11T00:00:00Z');
+	const thread = createThread(
+		't-xing-unsubscribe',
+		'Xing suggestion',
+		'mailrobot@mail.xing.com',
+		['triage/newsletters', 'Digest/Pending-Action'],
+		now,
+		true,
+		'<https://www.xing.com/mw/unsubscribe/HlY5jvhfrAnXnnv9-avU>',
+		'<a href="https://www.xing.com/m/HlY5jvhfrAnXnnv9-avUM">Unsubscribe</a>'
+	);
+
+	const [item] = queryPendingThreads(() => [thread], now);
+
+	assert.equal(item.unsubscribeUrl, 'https://www.xing.com/m/HlY5jvhfrAnXnnv9-avUM');
 });
 
 test('queryPendingThreads hydrates the stored Gemini summary by thread ID', () => {

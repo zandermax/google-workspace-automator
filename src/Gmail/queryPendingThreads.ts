@@ -3,12 +3,14 @@ import {
 	type TriageCategory,
 } from '@/types/Gmail/triage';
 import { PENDING_ACTION_SEARCH_QUERY } from './actionRules';
-import { parseUnsubscribeHeaders } from './extraction';
+import { extractUnsubscribeHeaderFromMessage } from './extraction';
 import { getTriageSummary, type TriageSummary } from './pendingTriageSummaries';
 
 interface PendingMessageLike {
 	getFrom(): string;
 	getHeader?(name: string): string;
+	getBody?(): string;
+	getRawContent?(): string;
 }
 
 export interface PendingThreadLike {
@@ -76,9 +78,9 @@ export const queryPendingThreads = (
 	const ranked = threads.map((thread) => {
 		const messages = thread.getMessages();
 		const lastMessage = messages[messages.length - 1];
-		const unsubscribe = parseUnsubscribeHeaders(
-			lastMessage?.getHeader?.('List-Unsubscribe')
-		);
+		const unsubscribe = lastMessage
+			? extractUnsubscribeHeaderFromMessage(lastMessage)
+			: {};
 		const summary = summaryProvider(thread.getId());
 
 		const item: PendingItem = {
