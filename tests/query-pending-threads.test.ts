@@ -85,6 +85,25 @@ test('queryPendingThreads reads the unsubscribe URL from the latest message', ()
 	assert.equal(item.unsubscribeMailto, 'mailto:unsubscribe@example.com');
 });
 
+test('queryPendingThreads hydrates the stored Gemini summary by thread ID', () => {
+	const now = new Date('2026-09-11T00:00:00Z');
+	const thread = createThread(
+		't-summary',
+		'Weekly newsletter',
+		'news@example.com',
+		['triage/newsletters', 'Digest/Pending-Action'],
+		now
+	);
+
+	const [item] = queryPendingThreads(
+		() => [thread],
+		now,
+		() => ({ summary: 'The week in product updates.', highlights: [], keyDetail: '' })
+	);
+
+	assert.equal(item.summary, 'The week in product updates.');
+});
+
 test('queryPendingThreads sorts oldest first within the same inbox partition', () => {
 	const now = new Date('2026-09-11T00:00:00Z');
 	const newer = createThread('newer', 'Newer', 'a@b.com', ['triage/personal'], new Date('2026-09-10T00:00:00Z'), true);

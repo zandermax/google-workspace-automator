@@ -5,14 +5,23 @@ import {
 	handleDeleteDigestThread,
 } from '../src/_s/Gmail/digest-actions';
 
-const globalWithGmail = globalThis as typeof globalThis & { GmailApp: any };
+const globalWithGmail = globalThis as typeof globalThis & {
+	GmailApp: any;
+	PropertiesService: any;
+};
 const originalGmailApp = globalWithGmail.GmailApp;
+const originalPropertiesService = globalWithGmail.PropertiesService;
 
 test.afterEach(() => {
 	if (originalGmailApp !== undefined) {
 		globalWithGmail.GmailApp = originalGmailApp;
 	} else {
 		delete (globalWithGmail as any).GmailApp;
+	}
+	if (originalPropertiesService !== undefined) {
+		globalWithGmail.PropertiesService = originalPropertiesService;
+	} else {
+		delete (globalWithGmail as any).PropertiesService;
 	}
 });
 
@@ -48,4 +57,20 @@ test('handleDeleteDigestThread returns false when the thread no longer exists', 
 	};
 
 	assert.equal(handleDeleteDigestThread('missing'), false);
+});
+
+test('resolved digest actions remove their persisted triage summary', () => {
+	const deletedKeys: string[] = [];
+	globalWithGmail.GmailApp = {
+		getThreadById: () => ({ moveToArchive: () => {} }),
+		getUserLabelByName: () => ({ removeFromThread: () => {} }),
+	};
+	globalWithGmail.PropertiesService = {
+		getScriptProperties: () => ({
+			deleteProperty: (key: string) => deletedKeys.push(key),
+		}),
+	};
+
+	assert.equal(handleArchiveDigestThread('t-1'), true);
+	assert.deepEqual(deletedKeys, ['TRIAGE_SUMMARY_t-1']);
 });

@@ -7,6 +7,7 @@ import {
 	archiveDigestThread,
 	deleteDigestThread,
 } from '../../Gmail/digestActionResolver';
+import { removeTriageSummary } from '../../Gmail/pendingTriageSummaries';
 
 export const doGet = (): GoogleAppsScript.HTML.HtmlOutput => {
 	const items = queryPendingThreads();
@@ -16,8 +17,18 @@ export const doGet = (): GoogleAppsScript.HTML.HtmlOutput => {
 	return HtmlService.createHtmlOutput(html).setTitle('Pending Triage Actions');
 };
 
-export const handleArchiveDigestThread = (threadId: string): boolean =>
-	archiveDigestThread(threadId).resolved;
+export const handleArchiveDigestThread = (threadId: string): boolean => {
+	const result = archiveDigestThread(threadId);
+	if (result.resolved) {
+		removeTriageSummary(threadId);
+	}
+	return result.resolved;
+};
 
-export const handleDeleteDigestThread = (threadId: string): boolean =>
-	deleteDigestThread(threadId).resolved;
+export const handleDeleteDigestThread = (threadId: string): boolean => {
+	const result = deleteDigestThread(threadId);
+	if (result.resolved) {
+		removeTriageSummary(threadId);
+	}
+	return result.resolved;
+};

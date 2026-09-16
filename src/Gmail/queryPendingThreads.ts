@@ -4,6 +4,7 @@ import {
 } from '@/types/Gmail/triage';
 import { PENDING_ACTION_SEARCH_QUERY } from './actionRules';
 import { parseUnsubscribeHeaders } from './extraction';
+import { getTriageSummary, type TriageSummary } from './pendingTriageSummaries';
 
 interface PendingMessageLike {
 	getFrom(): string;
@@ -25,6 +26,9 @@ export interface PendingItem {
 	subject: string;
 	sender: string;
 	ageInDays: number;
+	summary?: string;
+	highlights?: string[];
+	keyDetail?: string;
 	unsubscribeUrl?: string;
 	unsubscribeMailto?: string;
 }
@@ -63,7 +67,9 @@ const inboxPartitionRank = (inInbox: boolean): number => (inInbox ? 1 : 0);
 
 export const queryPendingThreads = (
 	search: PendingThreadSearchFunction = defaultSearch,
-	now: Date = new Date()
+	now: Date = new Date(),
+	summaryProvider: (threadId: string) => TriageSummary | undefined =
+		getTriageSummary
 ): PendingItem[] => {
 	const threads = search();
 
@@ -73,6 +79,7 @@ export const queryPendingThreads = (
 		const unsubscribe = parseUnsubscribeHeaders(
 			lastMessage?.getHeader?.('List-Unsubscribe')
 		);
+		const summary = summaryProvider(thread.getId());
 
 		const item: PendingItem = {
 			threadId: thread.getId(),
@@ -82,6 +89,13 @@ export const queryPendingThreads = (
 			ageInDays: daysSince(thread.getLastMessageDate(), now),
 			...(unsubscribe.url ? { unsubscribeUrl: unsubscribe.url } : {}),
 			...(unsubscribe.mailto ? { unsubscribeMailto: unsubscribe.mailto } : {}),
+			...(summary
+				? {
+					summary: summary.summary,
+					highlights: summary.highlights,
+					keyDetail: summary.keyDetail,
+				}
+				: {}),
 		};
 
 		return { item, inInbox: thread.isInInbox() };

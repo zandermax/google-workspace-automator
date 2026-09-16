@@ -21,6 +21,7 @@ import { groupDirectivesByDuplicates } from '../../Gmail/deduplication';
 import { getStorageMetrics, type StorageProvider } from '../../Gmail/StorageStats';
 import { sendDigest, sendBacklogOnlyDigest, type EmailSender } from '../../Gmail/actions/sendDigest';
 import { getPendingActionCount, type PendingCountProvider } from '../../Gmail/pendingActions';
+import { saveTriageSummaries } from '../../Gmail/pendingTriageSummaries';
 import {
 	type DailyDigestData,
 	type ExtractedEmailSnippet,
@@ -198,6 +199,9 @@ export const runAiSorterPipeline = (
 		dryRun,
 		dailyLimit: remainingCapacity,
 	});
+	if (!dryRun) {
+		saveTriageSummaries(executionResult.directives);
+	}
 
 	// 6. Gather storage metrics
 	const storageMetrics = getStorageMetrics(directives, {
