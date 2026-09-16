@@ -145,7 +145,7 @@ After the run, send one summary email to the account owner.
 
 ```
 📬 Daily Email Digest — [date]
-Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed: X MB
+Processed: N / 50 | Action needed: N | Auto-recycling: N | Space freed by auto-recycler: X MB
 
 🗄️ Storage
 - Gmail used: X GB / 15 GB  (▼ freed X MB today)

@@ -256,7 +256,7 @@ export const composeDigestBody = (data: DailyDigestData): string => {
 
 	const spaceFreedStr = formatMegabytes(data.storage.estimatedRecycleBytes);
 	lines.push(
-		`Processed: ${data.processedCount} / ${data.dailyLimit} | Action needed: ${data.actionRequiredCount} | Auto-recycling: ${data.autoRecyclingCount} | Space freed: ${spaceFreedStr}`
+		`Processed: ${data.processedCount} / ${data.dailyLimit} | Action needed: ${data.actionRequiredCount} | Auto-recycling: ${data.autoRecyclingCount} | Space freed by auto-recycler: ${spaceFreedStr}`
 	);
 	lines.push('');
 
@@ -667,7 +667,7 @@ export const composeDigestHtml = (data: DailyDigestData): string => {
 
 	return toHtmlNumericEntities(`<div style="font-family:${HTML_FONT_STACK};font-size:14px;line-height:1.5;color:#1f2937;max-width:640px;margin:0 auto;">
 	<div style="font-size:20px;font-weight:700;margin-bottom:4px;">${escapeHtml(headerTitle)}</div>
-	<div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Processed: ${data.processedCount} / ${data.dailyLimit} &nbsp;·&nbsp; Action needed: ${data.actionRequiredCount} &nbsp;·&nbsp; Auto-recycling: ${data.autoRecyclingCount} &nbsp;·&nbsp; Space freed: ${spaceFreedStr}</div>
+	<div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Processed: ${data.processedCount} / ${data.dailyLimit} &nbsp;·&nbsp; Action needed: ${data.actionRequiredCount} &nbsp;·&nbsp; Auto-recycling: ${data.autoRecyclingCount} &nbsp;·&nbsp; Space freed by auto-recycler: ${spaceFreedStr}</div>
 	${storageHtml}
 	${overflowHtml}
 	${sections.join('')}
