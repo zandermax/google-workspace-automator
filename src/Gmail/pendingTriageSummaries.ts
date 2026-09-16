@@ -1,8 +1,12 @@
-import { type TriageExecutionDirective } from '@/types/Gmail/triage';
+import {
+	type TriageCategory,
+	type TriageExecutionDirective,
+} from '@/types/Gmail/triage';
 
 const PROPERTY_PREFIX = 'TRIAGE_SUMMARY_';
 
 export interface TriageSummary {
+	category?: TriageCategory;
 	summary: string;
 	highlights: string[];
 	keyDetail: string;
@@ -33,10 +37,10 @@ export const saveTriageSummaries = (
 	}
 
 	for (const directive of directives) {
-		const { summary, highlights, keyDetail } = directive.classification;
+		const { category, summary, highlights, keyDetail } = directive.classification;
 		store.setProperty(
 			propertyKey(directive.threadId),
-			JSON.stringify({ summary, highlights, keyDetail } satisfies TriageSummary)
+			JSON.stringify({ category, summary, highlights, keyDetail } satisfies TriageSummary)
 		);
 	}
 };
@@ -66,6 +70,7 @@ export const getTriageSummary = (
 		}
 
 		return {
+			...(typeof parsed.category === 'string' ? { category: parsed.category as TriageCategory } : {}),
 			summary: parsed.summary,
 			highlights: parsed.highlights,
 			keyDetail: parsed.keyDetail,

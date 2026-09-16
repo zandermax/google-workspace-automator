@@ -422,7 +422,7 @@ test('selectCascadeThreads avoids duplicate thread IDs across pools', () => {
 	assert.deepEqual(ids, ['duplicate-1', 'o1']);
 });
 
-test('determineTriageDirective routes time-sensitive stale mail to recycle-7d-only', () => {
+test('determineTriageDirective keeps time-sensitive stale mail pending for manual triage', () => {
 	const email: ExtractedEmailSnippet = {
 		id: 't-stale',
 		sender: 'promo@store.com',
@@ -448,13 +448,13 @@ test('determineTriageDirective routes time-sensitive stale mail to recycle-7d-on
 	};
 
 	const directive = determineTriageDirective(email, classification, 7);
-	assert.equal(directive.actionType, 'recycle-7d-only');
+	assert.equal(directive.actionType, 'apply-label-only');
 	assert.equal(directive.triageLabel, undefined);
-	assert.equal(directive.recycleLabel, AUTO_RECYCLE_LABEL);
-	assert.ok(directive.reason.includes('Time-sensitive message is stale'));
+	assert.equal(directive.recycleLabel, undefined);
+	assert.ok(directive.reason.includes('Queued for manual review'));
 });
 
-test('determineTriageDirective routes non-stale ephemeral categories to label + recycle-7d', () => {
+test('determineTriageDirective keeps non-stale ephemeral categories pending for manual triage', () => {
 	const email: ExtractedEmailSnippet = {
 		id: 't-newsletter',
 		sender: 'digest@tech.com',
@@ -480,12 +480,12 @@ test('determineTriageDirective routes non-stale ephemeral categories to label + 
 	};
 
 	const directive = determineTriageDirective(email, classification, 7);
-	assert.equal(directive.actionType, 'apply-label-and-recycle-7d');
-	assert.equal(directive.triageLabel, 'triage/newsletters');
-	assert.equal(directive.recycleLabel, AUTO_RECYCLE_LABEL);
+	assert.equal(directive.actionType, 'apply-label-only');
+	assert.equal(directive.triageLabel, undefined);
+	assert.equal(directive.recycleLabel, undefined);
 });
 
-test('determineTriageDirective routes retain categories to apply-label-only', () => {
+test('determineTriageDirective keeps retain categories pending without applying a triage label', () => {
 	const email: ExtractedEmailSnippet = {
 		id: 't-personal',
 		sender: 'mom@family.org',
@@ -512,7 +512,7 @@ test('determineTriageDirective routes retain categories to apply-label-only', ()
 
 	const directive = determineTriageDirective(email, classification, 7);
 	assert.equal(directive.actionType, 'apply-label-only');
-	assert.equal(directive.triageLabel, 'triage/personal');
+	assert.equal(directive.triageLabel, undefined);
 	assert.equal(directive.recycleLabel, undefined);
 });
 
@@ -543,7 +543,7 @@ test('determineTriageDirective routes triage/unknown to apply-label-only for man
 
 	const directive = determineTriageDirective(email, classification, 7);
 	assert.equal(directive.actionType, 'apply-label-only');
-	assert.equal(directive.triageLabel, 'triage/unknown');
+	assert.equal(directive.triageLabel, undefined);
 	assert.equal(directive.recycleLabel, undefined);
 });
 
@@ -592,9 +592,9 @@ test('determineTriageDirectives matches emails with classifications in batch', (
 	);
 	assert.equal(directives.length, 2);
 	assert.equal(directives[0].threadId, 't-1');
-	assert.equal(directives[0].triageLabel, 'triage/finance');
+	assert.equal(directives[0].triageLabel, undefined);
 	assert.equal(directives[1].threadId, 't-2');
-	assert.equal(directives[1].triageLabel, 'triage/alerts');
+	assert.equal(directives[1].triageLabel, undefined);
 
 	assert.throws(
 		() => determineTriageDirectives([email1, email2], [class1]),
@@ -646,13 +646,13 @@ test('executeTriageActions dry run skips mutations and returns simulated results
 
 	assert.equal(result.isDryRun, true);
 	assert.equal(result.processedCount, 1);
-	assert.equal(result.labeledCount, 1);
-	assert.equal(result.recycledCount, 1);
+	assert.equal(result.labeledCount, 0);
+	assert.equal(result.recycledCount, 0);
 	assert.equal(labelAdded, false);
 	assert.equal(markProcessedCalled, false);
 });
 
-test('executeTriageActions live mode applies labels, marks processed, and respects dailyLimit', () => {
+test('executeTriageActions applies only the pending label, marks processed, and respects dailyLimit', () => {
 	const labelsApplied: Array<{ label: string; threadId: string }> = [];
 	const processedBatches: string[][] = [];
 
@@ -737,23 +737,18 @@ test('executeTriageActions live mode applies labels, marks processed, and respec
 	assert.equal(result.isDryRun, false);
 	assert.equal(result.processedCount, 2);
 	assert.equal(result.skippedCount, 1); // 3rd directive skipped due to dailyLimit=2
-	assert.equal(result.labeledCount, 2);
-	assert.equal(result.recycledCount, 1);
+	assert.equal(result.labeledCount, 0);
+	assert.equal(result.recycledCount, 0);
 
-	// th-1 got triage/personal and Digest/Pending-Action
-	// th-2 got triage/newsletters, Auto-Recycle/7d, and Digest/Pending-Action
 	assert.deepEqual(labelsApplied, [
-		{ label: 'triage/personal', threadId: 'th-1' },
 		{ label: 'Digest/Pending-Action', threadId: 'th-1' },
-		{ label: 'triage/newsletters', threadId: 'th-2' },
-		{ label: 'Auto-Recycle/7d', threadId: 'th-2' },
 		{ label: 'Digest/Pending-Action', threadId: 'th-2' },
 	]);
 
 	assert.deepEqual(processedBatches, [['th-1', 'th-2']]);
 });
 
-test('executeTriageActions applies Digest/Pending-Action to every processed thread, including recycle-7d-only', () => {
+test('executeTriageActions does not automatically add a recycle label', () => {
 	const labelsApplied: Array<{ label: string; threadId: string }> = [];
 	const mockLabels = new Map<string, LabelLike>();
 	const getOrCreateLabel = (name: string): LabelLike => {
@@ -796,7 +791,6 @@ test('executeTriageActions applies Digest/Pending-Action to every processed thre
 	});
 
 	assert.deepEqual(labelsApplied, [
-		{ label: 'Auto-Recycle/7d', threadId: 'th-recycle' },
 		{ label: 'Digest/Pending-Action', threadId: 'th-recycle' },
 	]);
 });

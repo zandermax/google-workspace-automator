@@ -67,6 +67,7 @@ test('resolved digest actions remove their persisted triage summary', () => {
 	};
 	globalWithGmail.PropertiesService = {
 		getScriptProperties: () => ({
+			getProperty: () => null,
 			deleteProperty: (key: string) => deletedKeys.push(key),
 		}),
 	};

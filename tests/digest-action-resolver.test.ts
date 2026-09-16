@@ -5,9 +5,10 @@ import {
 	deleteDigestThread,
 } from '../src/Gmail/digestActionResolver';
 
-test('archiveDigestThread archives the thread and removes the pending label', () => {
+test('archiveDigestThread archives the thread, applies its triage category, and removes the pending label', () => {
 	let archived = false;
 	let labelRemoved = false;
+	let triageLabelAdded = false;
 
 	const result = archiveDigestThread('t-1', {
 		resolveThread: () =>
@@ -17,17 +18,26 @@ test('archiveDigestThread archives the thread and removes the pending label', ()
 					archived = true;
 				},
 			}) as any,
-		getLabel: () => ({
-			getName: () => 'Digest/Pending-Action',
-			addToThread: () => {},
-			removeFromThread: () => {
-				labelRemoved = true;
+		getLabel: (name) => ({
+			getName: () => name,
+			addToThread: () => {
+				triageLabelAdded = name === 'triage/finance';
 			},
+			removeFromThread: () => {
+				labelRemoved = name === 'Digest/Pending-Action';
+			},
+		}),
+		summaryProvider: () => ({
+			category: 'triage/finance',
+			summary: '',
+			highlights: [],
+			keyDetail: '',
 		}),
 	});
 
 	assert.deepEqual(result, { threadId: 't-1', action: 'archive', resolved: true });
 	assert.equal(archived, true);
+	assert.equal(triageLabelAdded, true);
 	assert.equal(labelRemoved, true);
 });
 

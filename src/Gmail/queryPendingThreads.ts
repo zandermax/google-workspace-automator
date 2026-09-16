@@ -85,7 +85,7 @@ export const queryPendingThreads = (
 
 		const item: PendingItem = {
 			threadId: thread.getId(),
-			category: resolveCategory(thread),
+			category: summary?.category ?? resolveCategory(thread),
 			subject: thread.getFirstMessageSubject(),
 			sender: lastMessage ? lastMessage.getFrom() : '',
 			ageInDays: daysSince(thread.getLastMessageDate(), now),

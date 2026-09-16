@@ -146,7 +146,7 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 	assert.equal(result.isDryRun, true);
 	assert.equal(result.processedCount, 2);
 	assert.equal(result.actionRequiredCount, 1);
-	assert.equal(result.autoRecyclingCount, 1);
+	assert.equal(result.autoRecyclingCount, 0);
 	assert.ok(result.digestSubject.startsWith('[DRY RUN]'));
 
 	assert.ok(sentEmail !== null);
@@ -154,7 +154,6 @@ test('runAiSorterPipeline dry run executes complete pipeline without mutations a
 	assert.ok(sentEmail?.subject.includes('[DRY RUN] 📬 Daily Email Digest'));
 	assert.ok(sentEmail?.body.includes('⚡ ACTION REQUIRED'));
 	assert.ok(sentEmail?.body.includes('Lunch tomorrow'));
-	assert.ok(sentEmail?.body.includes('🕰️ RECYCLING IN 7 DAYS'));
 	assert.ok(sentEmail?.body.includes('Weekly Digest'));
 	assert.ok(
 		sentEmail?.body.includes(

@@ -69,6 +69,7 @@ test('triage summaries persist by thread ID and are removed after resolution', (
 
 	saveTriageSummaries([createDirective('thread-1')], store);
 	assert.deepEqual(getTriageSummary('thread-1', store), {
+		category: 'triage/newsletters',
 		summary: 'Weekly product updates and announcements.',
 		highlights: ['Release notes', 'Upcoming webinar'],
 		keyDetail: 'Webinar Friday',

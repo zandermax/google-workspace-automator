@@ -118,9 +118,15 @@ test('queryPendingThreads hydrates the stored Gemini summary by thread ID', () =
 	const [item] = queryPendingThreads(
 		() => [thread],
 		now,
-		() => ({ summary: 'The week in product updates.', highlights: [], keyDetail: '' })
+		() => ({
+			category: 'triage/newsletters',
+			summary: 'The week in product updates.',
+			highlights: [],
+			keyDetail: '',
+		})
 	);
 
+	assert.equal(item.category, 'triage/newsletters');
 	assert.equal(item.summary, 'The week in product updates.');
 });
 

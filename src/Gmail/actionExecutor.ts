@@ -104,12 +104,6 @@ export const executeTriageActions = <TThread extends ThreadLikeWithId = ThreadLi
 		}
 
 		if (dryRun) {
-			if (directive.triageLabel) {
-				labeledCount += 1;
-			}
-			if (directive.recycleLabel) {
-				recycledCount += 1;
-			}
 			processedCount += 1;
 			executedDirectives.push(directive);
 
@@ -131,18 +125,6 @@ export const executeTriageActions = <TThread extends ThreadLikeWithId = ThreadLi
 			}
 			skippedCount += 1;
 			continue;
-		}
-
-		if (directive.triageLabel) {
-			const label = ensureLabel(directive.triageLabel);
-			label.addToThread(thread);
-			labeledCount += 1;
-		}
-
-		if (directive.recycleLabel) {
-			const label = ensureLabel(directive.recycleLabel);
-			label.addToThread(thread);
-			recycledCount += 1;
 		}
 
 		const pendingLabel = ensureLabel(PENDING_ACTION_LABEL);
