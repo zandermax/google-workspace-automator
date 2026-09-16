@@ -51,7 +51,7 @@ export const renderActionsPageHtml = (groups: PendingItemGroup[]): string => {
 			google.script.run
 				.withSuccessHandler(function (resolved) {
 					if (resolved) {
-						removeRow(threadId);
+						completeRow(threadId, 'Archived');
 					} else {
 						setRowPending(threadId, false);
 						alert('Could not resolve that thread — it may have already been moved. Refresh the page.');
@@ -68,7 +68,7 @@ export const renderActionsPageHtml = (groups: PendingItemGroup[]): string => {
 			google.script.run
 				.withSuccessHandler(function (resolved) {
 					if (resolved) {
-						removeRow(threadId);
+						completeRow(threadId, 'Deleted');
 					} else {
 						setRowPending(threadId, false);
 						alert('Could not resolve that thread — it may have already been moved. Refresh the page.');
@@ -88,9 +88,19 @@ export const renderActionsPageHtml = (groups: PendingItemGroup[]): string => {
 			var status = row.querySelector('[data-action-status]');
 			if (status) { status.style.display = pending ? 'inline' : 'none'; }
 		}
-		function removeRow(threadId) {
+		function completeRow(threadId, action) {
 			var row = document.getElementById('pending-' + threadId);
-			if (row) { row.remove(); }
+			if (!row) { return; }
+			row.style.opacity = '0.55';
+			var buttons = row.querySelectorAll('[data-action-button]');
+			for (var i = 0; i < buttons.length; i += 1) { buttons[i].remove(); }
+			var status = row.querySelector('[data-action-status]');
+			if (status) { status.remove(); }
+			var completion = document.createElement('span');
+			completion.textContent = action === 'Deleted' ? '[Deleted]' : '[Archived]';
+			completion.style.marginLeft = '8px';
+			completion.style.color = action === 'Deleted' ? '#dc2626' : '#6b7280';
+			row.querySelector('div[style="margin-top:6px;"]').appendChild(completion);
 		}
 	</script>
 </body>
