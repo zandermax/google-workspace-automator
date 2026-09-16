@@ -42,6 +42,9 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 	assert.ok(html.includes('handleDeleteDigestThread'));
 	assert.ok(html.includes('withFailureHandler'));
 	assert.ok(html.includes('if (resolved)'));
+	assert.ok(html.includes('Working...'));
+	assert.ok(html.includes('setRowPending(threadId, true)'));
+	assert.ok(html.includes('setRowPending(threadId, false)'));
 });
 
 test('renderActionsPageHtml shows an empty state when nothing is pending', () => {

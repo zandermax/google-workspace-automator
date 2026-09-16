@@ -16,9 +16,10 @@ const renderItemHtml = (item: PendingItem): string => `<div id="pending-${escape
 	<div style="font-size:14px;margin-top:2px;"><strong>${escapeHtml(item.subject)}</strong></div>
 	${item.summary ? `<div style="margin-top:4px;color:#1f2937;">&rarr; ${escapeHtml(item.summary)}</div>` : ''}
 	<div style="margin-top:6px;">
-		<button onclick="archiveItem('${escapeHtml(item.threadId)}')" style="margin-right:8px;">Archive</button>
-		<button onclick="deleteItem('${escapeHtml(item.threadId)}')">Delete</button>
+		<button data-action-button onclick="archiveItem('${escapeHtml(item.threadId)}')" style="margin-right:8px;">Archive</button>
+		<button data-action-button onclick="deleteItem('${escapeHtml(item.threadId)}')">Delete</button>
 		${item.unsubscribeUrl ? `<a href="${escapeHtml(item.unsubscribeUrl)}" target="_blank" rel="noopener" style="margin-left:8px;">Unsubscribe</a>` : item.unsubscribeMailto ? `<a href="${escapeHtml(item.unsubscribeMailto)}" style="margin-left:8px;">Unsubscribe</a>` : ''}
+		<span data-action-status style="display:none;margin-left:8px;color:#6b7280;">Working...</span>
 	</div>
 </div>`;
 
@@ -46,28 +47,46 @@ export const renderActionsPageHtml = (groups: PendingItemGroup[]): string => {
 	${bodyHtml}
 	<script>
 		function archiveItem(threadId) {
+			setRowPending(threadId, true);
 			google.script.run
 				.withSuccessHandler(function (resolved) {
 					if (resolved) {
 						removeRow(threadId);
 					} else {
+						setRowPending(threadId, false);
 						alert('Could not resolve that thread — it may have already been moved. Refresh the page.');
 					}
 				})
-				.withFailureHandler(function (error) { alert('Action failed: ' + error.message); })
+				.withFailureHandler(function (error) {
+					setRowPending(threadId, false);
+					alert('Action failed: ' + error.message);
+				})
 				.handleArchiveDigestThread(threadId);
 		}
 		function deleteItem(threadId) {
+			setRowPending(threadId, true);
 			google.script.run
 				.withSuccessHandler(function (resolved) {
 					if (resolved) {
 						removeRow(threadId);
 					} else {
+						setRowPending(threadId, false);
 						alert('Could not resolve that thread — it may have already been moved. Refresh the page.');
 					}
 				})
-				.withFailureHandler(function (error) { alert('Action failed: ' + error.message); })
+				.withFailureHandler(function (error) {
+					setRowPending(threadId, false);
+					alert('Action failed: ' + error.message);
+				})
 				.handleDeleteDigestThread(threadId);
+		}
+		function setRowPending(threadId, pending) {
+			var row = document.getElementById('pending-' + threadId);
+			if (!row) { return; }
+			var buttons = row.querySelectorAll('[data-action-button]');
+			for (var i = 0; i < buttons.length; i += 1) { buttons[i].disabled = pending; }
+			var status = row.querySelector('[data-action-status]');
+			if (status) { status.style.display = pending ? 'inline' : 'none'; }
 		}
 		function removeRow(threadId) {
 			var row = document.getElementById('pending-' + threadId);
