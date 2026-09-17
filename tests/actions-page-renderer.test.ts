@@ -14,6 +14,7 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 					subject: 'Hi',
 					sender: 'a@b.com',
 					ageInDays: 400,
+					sizeKb: 250,
 					summary: 'The week in product updates.',
 					unsubscribeUrl: 'https://newsletter.example.com/unsubscribe',
 				} as PendingItemGroup['items'][number],
@@ -25,7 +26,7 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 
 	assert.ok(html.includes('👤'));
 	assert.ok(html.includes('PERSONAL'));
-	assert.ok(html.includes('a@b.com &middot; 1y 1mo 5d'));
+	assert.ok(html.includes('a@b.com &middot; 1y 1mo 5d &middot; 250 KB'));
 	assert.ok(html.includes('The week in product updates.'));
 	assert.ok(html.includes('href="https://mail.google.com/mail/u/0/#all/t-1"'));
 	assert.ok(html.includes('target="_blank"'));
@@ -52,6 +53,33 @@ test('renderActionsPageHtml renders category groups with Archive/Delete buttons 
 	assert.ok(html.includes('[Archived]'));
 	assert.ok(html.includes('[Deleted]'));
 	assert.ok(!html.includes('removeRow(threadId)'));
+});
+
+test('renderActionsPageHtml falls back to (no subject) and formats MB sizes', () => {
+	const groups: PendingItemGroup[] = [
+		{
+			category: 'triage/newsletters',
+			items: [
+				{
+					threadId: 't-2',
+					category: 'triage/newsletters',
+					subject: '   ',
+					sender: 'news@example.com',
+					ageInDays: 30,
+					sizeKb: 2400,
+				} as PendingItemGroup['items'][number],
+			],
+		},
+	];
+
+	const html = renderActionsPageHtml(groups);
+
+	assert.ok(html.includes('news@example.com &middot; 0y 1mo 0d &middot; 2.3 MB'));
+	assert.ok(
+		html.includes(
+			'<a href="https://mail.google.com/mail/u/0/#all/t-2" target="_blank" rel="noopener" style="color:#111827;text-decoration:none;"><strong>(no subject)</strong></a>'
+		)
+	);
 });
 
 test('renderActionsPageHtml shows an empty state when nothing is pending', () => {

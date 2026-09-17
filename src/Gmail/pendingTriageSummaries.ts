@@ -10,6 +10,7 @@ export interface TriageSummary {
 	summary: string;
 	highlights: string[];
 	keyDetail: string;
+	sizeKb?: number;
 }
 
 export interface TriageSummaryPropertyStore {
@@ -38,9 +39,10 @@ export const saveTriageSummaries = (
 
 	for (const directive of directives) {
 		const { category, summary, highlights, keyDetail } = directive.classification;
+		const sizeKb = directive.email.sizeKb;
 		store.setProperty(
 			propertyKey(directive.threadId),
-			JSON.stringify({ category, summary, highlights, keyDetail } satisfies TriageSummary)
+			JSON.stringify({ category, summary, highlights, keyDetail, sizeKb } satisfies TriageSummary)
 		);
 	}
 };
@@ -74,6 +76,7 @@ export const getTriageSummary = (
 			summary: parsed.summary,
 			highlights: parsed.highlights,
 			keyDetail: parsed.keyDetail,
+			...(typeof parsed.sizeKb === 'number' ? { sizeKb: parsed.sizeKb } : {}),
 		};
 	} catch {
 		return undefined;

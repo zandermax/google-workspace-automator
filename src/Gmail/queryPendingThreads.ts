@@ -6,11 +6,17 @@ import { PENDING_ACTION_SEARCH_QUERY } from './actionRules';
 import { extractUnsubscribeHeaderFromMessage } from './extraction';
 import { getTriageSummary, type TriageSummary } from './pendingTriageSummaries';
 
+interface PendingAttachmentLike {
+	getSize?(): number;
+}
+
 interface PendingMessageLike {
 	getFrom(): string;
 	getHeader?(name: string): string;
 	getBody?(): string;
+	getPlainBody?(): string;
 	getRawContent?(): string;
+	getAttachments?(): PendingAttachmentLike[];
 }
 
 export interface PendingThreadLike {
@@ -28,6 +34,7 @@ export interface PendingItem {
 	subject: string;
 	sender: string;
 	ageInDays: number;
+	sizeKb: number;
 	summary?: string;
 	highlights?: string[];
 	keyDetail?: string;
@@ -63,6 +70,29 @@ const resolveCategory = (thread: PendingThreadLike): TriageCategory => {
 
 const daysSince = (date: Date, now: Date): number =>
 	Math.max(0, Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)));
+
+const calculateThreadSizeKb = (messages: PendingMessageLike[]): number => {
+	let totalBytes = 0;
+	for (const msg of messages) {
+		const body =
+			(typeof msg.getPlainBody === 'function' ? msg.getPlainBody() : undefined) ||
+			(typeof msg.getBody === 'function' ? msg.getBody() : '') ||
+			'';
+		totalBytes += body.length;
+
+		if (typeof msg.getAttachments === 'function') {
+			const attachments = msg.getAttachments() || [];
+			for (const att of attachments) {
+				if (typeof att.getSize === 'function') {
+					totalBytes += att.getSize() || 0;
+				}
+			}
+		}
+	}
+
+	return Math.max(1, Math.round(totalBytes / 1024));
+};
+
 // Threads already moved out of the inbox sort first, so users see nagging reminders
 // to finish clearing the label on items they've already actioned natively in Gmail.
 const inboxPartitionRank = (inInbox: boolean): number => (inInbox ? 1 : 0);
@@ -82,6 +112,10 @@ export const queryPendingThreads = (
 			? extractUnsubscribeHeaderFromMessage(lastMessage)
 			: {};
 		const summary = summaryProvider(thread.getId());
+		const sizeKb =
+			typeof summary?.sizeKb === 'number'
+				? summary.sizeKb
+				: calculateThreadSizeKb(messages);
 
 		const item: PendingItem = {
 			threadId: thread.getId(),
@@ -89,6 +123,7 @@ export const queryPendingThreads = (
 			subject: thread.getFirstMessageSubject(),
 			sender: lastMessage ? lastMessage.getFrom() : '',
 			ageInDays: daysSince(thread.getLastMessageDate(), now),
+			sizeKb,
 			...(unsubscribe.url ? { unsubscribeUrl: unsubscribe.url } : {}),
 			...(unsubscribe.mailto ? { unsubscribeMailto: unsubscribe.mailto } : {}),
 			...(summary

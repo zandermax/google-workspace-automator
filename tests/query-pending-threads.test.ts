@@ -50,6 +50,7 @@ test('queryPendingThreads resolves category from thread labels and computes age 
 			subject: 'Invoice due',
 			sender: 'billing@service.com',
 			ageInDays: 3,
+			sizeKb: 1,
 		},
 	]);
 });
@@ -128,6 +129,48 @@ test('queryPendingThreads hydrates the stored Gemini summary by thread ID', () =
 
 	assert.equal(item.category, 'triage/newsletters');
 	assert.equal(item.summary, 'The week in product updates.');
+});
+
+test('queryPendingThreads populates sizeKb from summary when available and falls back to messages', () => {
+	const now = new Date('2026-09-11T00:00:00Z');
+	const threadWithSummary = createThread(
+		't-with-summary',
+		'Big newsletter',
+		'news@example.com',
+		['triage/newsletters'],
+		now
+	);
+
+	const [itemWithSummary] = queryPendingThreads(
+		() => [threadWithSummary],
+		now,
+		() => ({
+			category: 'triage/newsletters',
+			summary: 'Updates.',
+			highlights: [],
+			keyDetail: '',
+			sizeKb: 2048,
+		})
+	);
+	assert.equal(itemWithSummary.sizeKb, 2048);
+
+	const threadWithoutSummary = createThread(
+		't-without-summary',
+		'Fallback calculation',
+		'news@example.com',
+		['triage/newsletters'],
+		now,
+		true,
+		'',
+		'A'.repeat(5120)
+	);
+
+	const [itemWithoutSummary] = queryPendingThreads(
+		() => [threadWithoutSummary],
+		now,
+		() => undefined
+	);
+	assert.equal(itemWithoutSummary.sizeKb, 5);
 });
 
 test('queryPendingThreads sorts oldest first within the same inbox partition', () => {

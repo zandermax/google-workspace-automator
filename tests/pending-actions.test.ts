@@ -73,6 +73,7 @@ test('triage summaries persist by thread ID and are removed after resolution', (
 		summary: 'Weekly product updates and announcements.',
 		highlights: ['Release notes', 'Upcoming webinar'],
 		keyDetail: 'Webinar Friday',
+		sizeKb: 1,
 	});
 
 	removeTriageSummary('thread-1', store);
