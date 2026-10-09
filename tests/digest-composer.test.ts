@@ -94,7 +94,7 @@ test('StorageStats correctly calculates recycle size and formats units', () => {
 			recycleLabel: 'Auto-Recycle/7d',
 		}),
 		createMockDirective('2', 'triage/personal', { sizeKb: 2048 }), // No recycle
-		createMockDirective('3', 'triage/junk', {
+		createMockDirective('3', 'triage/newsletters', {
 			sizeKb: 3072,
 			recycleLabel: 'Auto-Recycle/7d',
 		}),
@@ -418,33 +418,6 @@ test('composeDigestBody displays high volume overflow banner when triggered', ()
 	assert.ok(
 		body.includes('All caught up! No unprocessed emails found for today.')
 	);
-});
-
-test('composeDigestBody formats triage/unknown section for unclassifiable mail', () => {
-	const dUnknown = createMockDirective('u-1', 'triage/unknown', {
-		sizeKb: 20,
-		ageInDays: 1,
-	});
-	const data: DailyDigestData = {
-		date: new Date('2026-09-10'),
-		processedCount: 1,
-		dailyLimit: 50,
-		actionRequiredCount: 0,
-		autoRecyclingCount: 0,
-		isHighVolumeOverflow: false,
-		isDryRun: false,
-		actionsPageUrl: TEST_ACTIONS_URL,
-		storage: {
-			gmailUsedBytes: 0,
-			gmailTotalBytes: 0,
-			estimatedRecycleBytes: 0,
-		},
-		entries: [dUnknown],
-	};
-
-	const body = composeDigestBody(data);
-	assert.ok(body.includes('UNKNOWN'));
-	assert.ok(body.includes('triage%2Funknown'));
 });
 
 test('sendDigest dispatches email with correct recipient, subject, and content', () => {

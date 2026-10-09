@@ -199,9 +199,6 @@ export const CLASSIFICATION_RESPONSE_SCHEMA = {
 					'triage/govt',
 					'triage/receipts',
 					'triage/newsletters',
-					'triage/alerts',
-					'triage/junk',
-					'triage/unknown',
 				],
 			},
 			timeSensitive: { type: 'BOOLEAN' },
@@ -249,21 +246,18 @@ export const normalizeCategory = (category: string): string => {
 		return trimmed;
 	}
 
-	return 'triage/unknown';
+	return 'triage/personal';
 };
 
 export const SYSTEM_INSTRUCTION = `You are an expert email triage classifier for personal inbox management.
 Classify the provided batch of email snippets into exactly one category per email, evaluating urgency, actionability, and content summaries.
 
 The valid categories are:
-- "triage/personal": Messages from real people the user knows (friends, family, colleagues writing personal notes).
+- "triage/personal": Messages from real people the user knows (friends, family, colleagues writing personal notes), automated system alerts, monitoring notifications, verification codes, security events, flight delay notifications, or ambiguous/miscellaneous personal communications.
 - "triage/finance": Invoices, banking updates, tax records, payment receipts, statement notifications.
 - "triage/govt": Official correspondence from government bodies, legal authorities, or civic institutions.
 - "triage/receipts": Order confirmations and commercial purchase receipts for physical or digital goods, flight tickets, hotel reservations, travel bookings.
-- "triage/newsletters": Subscriptions, content digests, marketing newsletters, and periodic publications.
-- "triage/alerts": Automated system alerts, monitoring notifications, verification codes, security events, flight delay notifications.
-- "triage/junk": Confidently disposable low-value promotions, spam, or unsolicited outreach.
-- "triage/unknown": Ambiguous, unclassifiable, or anomalous messages that do not clearly match the categories above.
+- "triage/newsletters": Subscriptions, content digests, marketing newsletters, and periodic publications. Low-value promotions or marketing blasts also classify as newsletters (timeSensitive: true).
 
 Examples:
 - Personal email from friend or coworker:
@@ -274,14 +268,10 @@ Examples:
   {"id": "ex-3", "category": "triage/govt", "timeSensitive": true, "actionRequired": true, "summary": "City property tax assessment notice.", "highlights": ["Assessment reference 9812"], "keyDetail": "Payment due Nov 1"}
 - Flight booking confirmation, hotel reservation, or online store order:
   {"id": "ex-4", "category": "triage/receipts", "timeSensitive": false, "actionRequired": false, "summary": "Airline flight confirmation and booking receipt.", "highlights": ["Booking ref ABC123", "Flight SFO->JFK"], "keyDetail": ""}
-- Subscribed engineering newsletter:
+- Subscribed engineering newsletter or promotional marketing blast:
   {"id": "ex-5", "category": "triage/newsletters", "timeSensitive": false, "actionRequired": false, "summary": "Weekly software development insights.", "highlights": ["TypeScript tips"], "keyDetail": ""}
-- 2FA verification code or server uptime alert:
-  {"id": "ex-6", "category": "triage/alerts", "timeSensitive": true, "actionRequired": false, "summary": "Security verification code for account login.", "highlights": ["One-time passcode"], "keyDetail": "Expires in 10 mins"}
-- Marketing discount blast from clothing retailer:
-  {"id": "ex-7", "category": "triage/junk", "timeSensitive": true, "actionRequired": false, "summary": "Promotional sale email with store discounts.", "highlights": ["30% off code"], "keyDetail": ""}
-- Cryptic or strange email with no identifiable sender context or category:
-  {"id": "ex-8", "category": "triage/unknown", "timeSensitive": false, "actionRequired": false, "summary": "Unclassifiable message with unclear context or intent.", "highlights": [], "keyDetail": ""}
+- 2FA verification code or server uptime alert (classified as personal with timeSensitive: true):
+  {"id": "ex-6", "category": "triage/personal", "timeSensitive": true, "actionRequired": false, "summary": "Security verification code for account login.", "highlights": ["One-time passcode"], "keyDetail": "Expires in 10 mins"}
 
 Fields to return for each item:
 - "id": The exact ID of the input email item.

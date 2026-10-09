@@ -15,16 +15,13 @@ import {
 } from '../src/Gmail/extraction';
 import { ATTACHMENT_ICONS, TRIAGE_CATEGORIES } from '../src/types/Gmail/triage';
 
-test('triage categories contain all 8 planned categories including unknown', () => {
-	assert.equal(TRIAGE_CATEGORIES.length, 8);
+test('triage categories contain all 5 planned categories', () => {
+	assert.equal(TRIAGE_CATEGORIES.length, 5);
 	assert.ok(TRIAGE_CATEGORIES.includes('triage/personal'));
 	assert.ok(TRIAGE_CATEGORIES.includes('triage/finance'));
 	assert.ok(TRIAGE_CATEGORIES.includes('triage/govt'));
 	assert.ok(TRIAGE_CATEGORIES.includes('triage/receipts'));
 	assert.ok(TRIAGE_CATEGORIES.includes('triage/newsletters'));
-	assert.ok(TRIAGE_CATEGORIES.includes('triage/alerts'));
-	assert.ok(TRIAGE_CATEGORIES.includes('triage/junk'));
-	assert.ok(TRIAGE_CATEGORIES.includes('triage/unknown'));
 });
 
 test('sanitizeSnippet strips HTML tags, scripts, styles, and decodes entities', () => {

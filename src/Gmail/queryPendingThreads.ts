@@ -65,7 +65,7 @@ const resolveCategory = (thread: PendingThreadLike): TriageCategory => {
 		}
 	}
 
-	return 'triage/unknown';
+	return 'triage/personal';
 };
 
 const daysSince = (date: Date, now: Date): number =>

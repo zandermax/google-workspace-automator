@@ -16,7 +16,6 @@ import {
 import {
 	determineTriageDirective,
 	determineTriageDirectives,
-	AUTO_RECYCLE_LABEL,
 	PENDING_ACTION_LABEL,
 } from '../src/Gmail/actionRules';
 import {
@@ -516,29 +515,29 @@ test('determineTriageDirective keeps retain categories pending without applying 
 	assert.equal(directive.recycleLabel, undefined);
 });
 
-test('determineTriageDirective routes triage/unknown to apply-label-only for manual review', () => {
+test('determineTriageDirective routes non-stale time-sensitive personal to apply-label-only for manual review', () => {
 	const email: ExtractedEmailSnippet = {
-		id: 't-unknown',
-		sender: 'stranger@odd.xyz',
-		senderDomain: 'odd.xyz',
-		subject: 'Unusual query',
-		snippet: 'Something completely unclassifiable',
+		id: 't-alert',
+		sender: 'security@bank.com',
+		senderDomain: 'bank.com',
+		subject: 'Security alert code',
+		snippet: 'Your passcode is 123456',
 		hasAttachment: false,
 		attachmentTypes: [],
 		attachmentIcons: [],
-		ageInDays: 3,
+		ageInDays: 0,
 		sizeKb: 4,
 		date: new Date(),
 	};
 
 	const classification: TriageClassification = {
-		id: 't-unknown',
-		category: 'triage/unknown',
-		timeSensitive: false,
-		actionRequired: false,
-		summary: 'Unclassifiable query message.',
-		highlights: [],
-		keyDetail: '',
+		id: 't-alert',
+		category: 'triage/personal',
+		timeSensitive: true,
+		actionRequired: true,
+		summary: 'Security login alert.',
+		highlights: ['Code 123456'],
+		keyDetail: 'Expires in 10m',
 	};
 
 	const directive = determineTriageDirective(email, classification, 7);
@@ -578,10 +577,10 @@ test('determineTriageDirectives matches emails with classifications in batch', (
 	};
 	const class2: TriageClassification = {
 		id: 't-2',
-		category: 'triage/alerts',
+		category: 'triage/personal',
 		timeSensitive: false,
 		actionRequired: false,
-		summary: 'Alert',
+		summary: 'Personal',
 		highlights: [],
 		keyDetail: '',
 	};

@@ -55,7 +55,7 @@ test('queryPendingThreads resolves category from thread labels and computes age 
 	]);
 });
 
-test('queryPendingThreads falls back to triage/unknown when no category label is present', () => {
+test('queryPendingThreads falls back to triage/personal when no category label is present', () => {
 	const now = new Date('2026-09-11T00:00:00Z');
 	const thread = createThread(
 		't-2',
@@ -66,7 +66,7 @@ test('queryPendingThreads falls back to triage/unknown when no category label is
 	);
 
 	const items = queryPendingThreads(() => [thread], now);
-	assert.equal(items[0].category, 'triage/unknown');
+	assert.equal(items[0].category, 'triage/personal');
 	assert.equal(items[0].ageInDays, 0);
 });
 

@@ -131,7 +131,7 @@ test('deleteOldInvites trashes expired thread and skips future or malformed invi
 	assert.deepEqual(trashedThreads, ['thread-past']);
 	assert.equal(labeledThreads.length, 1);
 	assert.deepEqual(labeledThreads[0].ids, ['thread-past']);
-	assert.ok(labeledThreads[0].label.includes('📅'));
+	assert.equal(labeledThreads[0].label, '🪄✨ Magic ✨🪄');
 });
 
 test('deleteOldInvites keeps thread when rescheduled with future invite in a later message', () => {

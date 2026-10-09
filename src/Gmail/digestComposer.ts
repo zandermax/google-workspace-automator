@@ -70,27 +70,6 @@ export const CATEGORY_METADATA: Record<TriageCategory, CategoryMetadata> = {
 		accent: '#0284c7',
 		tint: '#f0f9ff',
 	},
-	'triage/alerts': {
-		icon: '🚨',
-		title: 'ALERTS',
-		labelKey: 'triage%2Falerts',
-		accent: '#e11d48',
-		tint: '#fff1f2',
-	},
-	'triage/junk': {
-		icon: '🗑️',
-		title: 'JUNK',
-		labelKey: 'triage%2Fjunk',
-		accent: '#6b7280',
-		tint: '#f9fafb',
-	},
-	'triage/unknown': {
-		icon: '❓',
-		title: 'UNKNOWN',
-		labelKey: 'triage%2Funknown',
-		accent: '#71717a',
-		tint: '#fafafa',
-	},
 };
 
 /** Accent used for the ACTION REQUIRED and RECYCLING sections, which have no category. */

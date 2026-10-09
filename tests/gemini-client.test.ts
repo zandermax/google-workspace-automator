@@ -177,9 +177,6 @@ test('GeminiClient successfully calls API and parses valid classification batch'
 			'triage/govt',
 			'triage/receipts',
 			'triage/newsletters',
-			'triage/alerts',
-			'triage/junk',
-			'triage/unknown',
 		]
 	);
 	assert.deepEqual(
@@ -218,7 +215,7 @@ test('validateClassificationResponse restores the input id when Gemini hallucina
 	);
 });
 
-test('GeminiClient normalizes unexpected categories to triage/unknown', () => {
+test('GeminiClient normalizes unexpected categories to triage/personal', () => {
 	const mockGeminiOutput = JSON.stringify([
 		{
 			id: 'thread-1',
@@ -251,14 +248,13 @@ test('GeminiClient normalizes unexpected categories to triage/unknown', () => {
 
 	const results = client.classifyBatch(mockInputs);
 	assert.equal(results.length, 2);
-	assert.equal(results[0].category, 'triage/unknown');
+	assert.equal(results[0].category, 'triage/personal');
 });
 
 test('SYSTEM_INSTRUCTION includes structured few-shot examples for categories', () => {
 	assert.ok(SYSTEM_INSTRUCTION.includes('Examples:'));
 	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/personal"'));
 	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/receipts"'));
-	assert.ok(SYSTEM_INSTRUCTION.includes('"triage/unknown"'));
 });
 
 test('GeminiClient falls back if model returns 404 Not Found', () => {
@@ -691,7 +687,7 @@ test('validateClassificationResponse validates well-formed JSON array and catche
 		/non-string category/iu
 	);
 
-	// Unexpected category string normalizes to triage/unknown
+	// Unexpected category string normalizes to triage/personal
 	const normalizedUnknown = validateClassificationResponse(
 		JSON.stringify([
 			{
@@ -706,7 +702,7 @@ test('validateClassificationResponse validates well-formed JSON array and catche
 		]),
 		mockInputs
 	);
-	assert.equal(normalizedUnknown[0].category, 'triage/unknown');
+	assert.equal(normalizedUnknown[0].category, 'triage/personal');
 
 	// Non-boolean timeSensitive
 	assert.throws(

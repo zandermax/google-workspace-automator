@@ -35,7 +35,7 @@ function createMockDirective(
 
 	const classification: TriageClassification = {
 		id,
-		category: options.category ?? 'triage/alerts',
+		category: options.category ?? 'triage/personal',
 		timeSensitive: false,
 		actionRequired: options.actionRequired ?? false,
 		summary: `Summary of email ${id}`,
